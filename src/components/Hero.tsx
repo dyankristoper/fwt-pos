@@ -23,7 +23,7 @@ const Hero = ({
 
           {/* Subheadline */}
           <p className="mb-10 max-w-md font-body text-lg text-primary-foreground/80 md:text-xl">
-            Consistent, high-quality chicken done right. Every time.
+            Chicken done right, every time.
           </p>
 
           {/* CTAs */}
