@@ -1,18 +1,12 @@
 import foodTexture from "@/assets/food-texture.jpg";
-
 const AboutSection = () => {
-  return (
-    <section id="about" className="bg-primary py-24">
+  return <section id="about" className="bg-primary py-24">
       <div className="container">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
           {/* Image */}
           <div className="relative">
             <div className="aspect-[4/3] overflow-hidden rounded-sm">
-              <img
-                src={foodTexture}
-                alt="Featherweight Chicken kitchen"
-                className="h-full w-full object-cover"
-              />
+              <img alt="Featherweight Chicken kitchen" className="h-full w-full object-cover" src="/lovable-uploads/4bb93ed7-93a2-4500-9698-f23c79f931b0.jpg" />
             </div>
             {/* Accent line */}
             <div className="absolute -bottom-4 -left-4 h-full w-full border-2 border-accent rounded-sm -z-10" />
@@ -72,8 +66,6 @@ const AboutSection = () => {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default AboutSection;
