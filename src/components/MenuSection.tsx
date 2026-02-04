@@ -13,7 +13,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   {
     name: "Sandwiches",
-    description: "Crispy fried chicken, brioche bun, house sauce",
+    description: "Crispy-juicy chicken thigh, signature sauces on toasted brioche buns",
     price: "From $9",
     image: heroSandwich,
   },
