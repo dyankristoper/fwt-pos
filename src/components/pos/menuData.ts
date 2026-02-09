@@ -2,6 +2,21 @@ import { MenuItem, MenuCategory } from './types';
 
 export const COMBO_SURCHARGE = 80;
 
+// Category images
+import sandwichImg from '@/assets/pos/sandwich.jpg';
+import chickenImg from '@/assets/pos/chicken-box.jpg';
+import sidesImg from '@/assets/pos/sides.jpg';
+import addonsImg from '@/assets/pos/addons.jpg';
+import drinksImg from '@/assets/pos/drinks.jpg';
+
+export const categoryImages: Record<MenuCategory, string> = {
+  sandwiches: sandwichImg,
+  chicken: chickenImg,
+  sides: sidesImg,
+  addons: addonsImg,
+  beverages: drinksImg,
+};
+
 export const menuItems: MenuItem[] = [
   // Signature Sandwiches
   { id: 'featherweight', name: 'Featherweight', price: 160, category: 'sandwiches' },
