@@ -34,6 +34,10 @@
     --cream: 38 66% 93%;
     --cream-dark: 38 50% 88%;
 
+    /* POS Terminal */
+    --pos-gold: 45 90% 50%;
+    --pos-gold-dark: 43 80% 32%;
+
     /* Semantic Tokens */
     --background: 38 66% 93%;
     --foreground: 213 35% 25%;

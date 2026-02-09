@@ -76,6 +76,10 @@ export default {
           DEFAULT: "hsl(var(--cream))",
           dark: "hsl(var(--cream-dark))",
         },
+        'pos-gold': {
+          DEFAULT: "hsl(var(--pos-gold))",
+          dark: "hsl(var(--pos-gold-dark))",
+        },
       },
       fontFamily: {
         display: ["Saira", "system-ui", "sans-serif"],
