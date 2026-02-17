@@ -175,7 +175,7 @@ const OrderPanel = ({
                 className="h-10 px-3 bg-foreground/5 border border-foreground/10 rounded-lg font-display font-semibold text-xs text-foreground/50 flex items-center gap-1.5 active:scale-[0.97] transition-transform disabled:opacity-30"
               >
                 <ShieldCheck size={14} />
-                SC / PWD
+                Discount
               </button>
               <div className="flex-1" />
             </div>
