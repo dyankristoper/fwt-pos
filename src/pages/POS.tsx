@@ -7,6 +7,7 @@ import ComboPrompt from '@/components/pos/ComboPrompt';
 import AddOnPrompt from '@/components/pos/AddOnPrompt';
 import PaymentFlow from '@/components/pos/PaymentFlow';
 import DailySummary from '@/components/pos/DailySummary';
+import DiscountFlow, { DiscountResult } from '@/components/pos/DiscountFlow';
 import { MenuCategory, PaymentMethod, MenuItem } from '@/components/pos/types';
 import { BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,6 +22,10 @@ const POS = () => {
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('sandwiches');
   const [orderNumber, setOrderNumber] = useState(1);
   const [addOnPromptItemId, setAddOnPromptItemId] = useState<string | null>(null);
+  const [showDiscountFlow, setShowDiscountFlow] = useState(false);
+  const [discountResult, setDiscountResult] = useState<DiscountResult | null>(null);
+
+  const saleId = `ORD-${String(orderNumber).padStart(4, '0')}`;
 
   // After combo prompt resolves (accept or decline), show add-on prompt
   const handleComboAccept = useCallback(() => {
@@ -41,7 +46,7 @@ const POS = () => {
 
   const handleAddOn = useCallback((addOn: MenuItem) => {
     if (addOnPromptItemId) {
-      order.addItem(addOn); // addItem attaches to lastMainItemRef
+      order.addItem(addOn);
     }
   }, [addOnPromptItemId, order]);
 
@@ -60,18 +65,21 @@ const POS = () => {
 
   const handleCompletePayment = useCallback(
     (method: PaymentMethod) => {
-      completeOrder(order.items, order.total, method);
+      const finalTotal = discountResult ? discountResult.finalAmount : order.total;
+      completeOrder(order.items, finalTotal, method);
       toast.success(`Order #${String(orderNumber).padStart(4, '0')} completed ✓`);
       order.clearOrder();
       setOrderNumber(prev => prev + 1);
+      setDiscountResult(null);
       setView('menu');
     },
-    [order, completeOrder, orderNumber]
+    [order, completeOrder, orderNumber, discountResult]
   );
 
   const handleClearOrder = useCallback(() => {
     const snapshot = [...order.items];
     order.clearOrder();
+    setDiscountResult(null);
     toast('Order cleared', {
       action: {
         label: 'Undo',
@@ -83,6 +91,26 @@ const POS = () => {
   const handleCancelPayment = useCallback(() => {
     setView('menu');
   }, []);
+
+  const handleAddIncidental = useCallback((item: MenuItem) => {
+    order.addItem(item);
+  }, [order]);
+
+  const handleApplyDiscount = useCallback(() => {
+    if (discountResult) {
+      toast.error('Discount already applied to this order');
+      return;
+    }
+    setShowDiscountFlow(true);
+  }, [discountResult]);
+
+  const handleDiscountApplied = useCallback((result: DiscountResult) => {
+    setDiscountResult(result);
+    setShowDiscountFlow(false);
+    toast.success(`${result.discountType} discount applied — Final: ₱${result.finalAmount.toFixed(2)}`);
+  }, []);
+
+  const payableTotal = discountResult ? discountResult.finalAmount : order.total;
 
   return (
     <div
@@ -137,7 +165,7 @@ const POS = () => {
             )}
             {view === 'payment' && (
               <PaymentFlow
-                total={order.total}
+                total={payableTotal}
                 onComplete={handleCompletePayment}
                 onCancel={handleCancelPayment}
               />
@@ -155,6 +183,9 @@ const POS = () => {
               onRemoveAddOn={order.removeAddOn}
               onClearOrder={handleClearOrder}
               onProceedToPayment={handleProceedToPayment}
+              onAddIncidental={handleAddIncidental}
+              onApplyDiscount={handleApplyDiscount}
+              discountApplied={discountResult ? { discountType: discountResult.discountType, finalAmount: discountResult.finalAmount } : null}
             />
           </div>
         </div>
@@ -175,6 +206,16 @@ const POS = () => {
           itemName={addOnPromptItem.menuItem.name}
           onSelectAddOn={handleAddOn}
           onDone={handleAddOnDone}
+        />
+      )}
+
+      {/* Discount flow overlay */}
+      {showDiscountFlow && (
+        <DiscountFlow
+          total={order.total}
+          saleId={saleId}
+          onApplyDiscount={handleDiscountApplied}
+          onCancel={() => setShowDiscountFlow(false)}
         />
       )}
     </div>

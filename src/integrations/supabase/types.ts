@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      discount_types: {
+        Row: {
+          created_at: string
+          discount_code: string
+          discount_name: string
+          discount_percent: number
+          id: string
+          is_active: boolean
+          is_vat_exempt: boolean
+          requires_customer_name: boolean
+          requires_id_number: boolean
+          requires_signature: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discount_code: string
+          discount_name: string
+          discount_percent?: number
+          id?: string
+          is_active?: boolean
+          is_vat_exempt?: boolean
+          requires_customer_name?: boolean
+          requires_id_number?: boolean
+          requires_signature?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discount_code?: string
+          discount_name?: string
+          discount_percent?: number
+          id?: string
+          is_active?: boolean
+          is_vat_exempt?: boolean
+          requires_customer_name?: boolean
+          requires_id_number?: boolean
+          requires_signature?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_cost_audit: {
         Row: {
           changed_at: string
@@ -196,6 +238,83 @@ export type Database = {
           updated_at?: string
           wastage_percent?: number | null
           yield_adjustment_factor?: number | null
+        }
+        Relationships: []
+      }
+      sales_discounts: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          discount_amount: number
+          discount_type_id: string
+          id: string
+          id_number: string | null
+          sale_id: string
+          vat_removed_amount: number
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          discount_amount?: number
+          discount_type_id: string
+          id?: string
+          id_number?: string | null
+          sale_id: string
+          vat_removed_amount?: number
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          discount_amount?: number
+          discount_type_id?: string
+          id?: string
+          id_number?: string | null
+          sale_id?: string
+          vat_removed_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_discounts_discount_type_id_fkey"
+            columns: ["discount_type_id"]
+            isOneToOne: false
+            referencedRelation: "discount_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sc_pwd_log: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          customer_name: string
+          discount_amount: number
+          id: string
+          id_number: string
+          processed_by: string | null
+          sale_id: string
+          vat_removed: number
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          customer_name: string
+          discount_amount?: number
+          id?: string
+          id_number: string
+          processed_by?: string | null
+          sale_id: string
+          vat_removed?: number
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          customer_name?: string
+          discount_amount?: number
+          id?: string
+          id_number?: string
+          processed_by?: string | null
+          sale_id?: string
+          vat_removed?: number
         }
         Relationships: []
       }

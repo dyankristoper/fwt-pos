@@ -1,6 +1,8 @@
 import { OrderItem } from './types';
 import { calculateItemTotal } from './useOrderState';
-import { X, Plus, Minus, ShoppingCart, CreditCard } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, CreditCard, ShieldCheck } from 'lucide-react';
+import IncidentalsPopover from './IncidentalsPopover';
+import { MenuItem } from './types';
 
 interface OrderPanelProps {
   items: OrderItem[];
@@ -13,6 +15,9 @@ interface OrderPanelProps {
   onRemoveAddOn: (id: string, index: number) => void;
   onClearOrder: () => void;
   onProceedToPayment: () => void;
+  onAddIncidental: (item: MenuItem) => void;
+  onApplyDiscount: () => void;
+  discountApplied?: { discountType: string; finalAmount: number } | null;
 }
 
 const OrderPanel = ({
@@ -26,6 +31,9 @@ const OrderPanel = ({
   onRemoveAddOn,
   onClearOrder,
   onProceedToPayment,
+  onAddIncidental,
+  onApplyDiscount,
+  discountApplied,
 }: OrderPanelProps) => {
   return (
     <div className="flex flex-col h-full">
@@ -77,7 +85,7 @@ const OrderPanel = ({
                       <div className="mt-1 space-y-0.5">
                         {item.addOns.map((addon, i) => (
                           <div key={i} className="flex items-center gap-1 text-[11px] text-foreground/55">
-                            <span>+ {addon.name} (+₱{addon.price.toFixed(2)})</span>
+                            <span>+ {addon.name} {addon.price > 0 ? `(+₱${addon.price.toFixed(2)})` : '(Free)'}</span>
                             {!readOnly && (
                               <button
                                 onClick={() => onRemoveAddOn(item.instanceId, i)}
@@ -106,7 +114,7 @@ const OrderPanel = ({
                   </div>
                 </div>
 
-                {/* Quantity controls — larger touch targets */}
+                {/* Quantity controls */}
                 {!readOnly && (
                   <div className="flex items-center gap-3 mt-2">
                     <button
@@ -134,7 +142,7 @@ const OrderPanel = ({
 
       {/* Footer */}
       <div className="border-t-2 border-foreground/10 p-4 shrink-0 bg-card">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1">
           <span className="font-display text-base font-semibold text-foreground/60 uppercase tracking-wide">
             Total
           </span>
@@ -142,23 +150,54 @@ const OrderPanel = ({
             ₱{total.toFixed(2)}
           </span>
         </div>
+
+        {/* Discount applied indicator */}
+        {discountApplied && (
+          <div className="bg-secondary border border-foreground/10 rounded-lg p-2 mb-2 flex items-center justify-between">
+            <span className="text-xs font-display font-semibold text-foreground flex items-center gap-1">
+              <ShieldCheck size={14} className="text-accent" />
+              {discountApplied.discountType} Discount Applied
+            </span>
+            <span className="font-display font-bold text-foreground">
+              ₱{discountApplied.finalAmount.toFixed(2)}
+            </span>
+          </div>
+        )}
+
         {!readOnly && (
-          <div className="flex gap-2">
-            <button
-              onClick={onClearOrder}
-              disabled={items.length === 0}
-              className="flex-1 h-14 border-2 border-foreground/15 text-foreground/40 rounded-xl font-display font-bold text-base active:scale-[0.97] transition-transform disabled:opacity-30"
-            >
-              Clear
-            </button>
-            <button
-              onClick={onProceedToPayment}
-              disabled={items.length === 0}
-              className="flex-[2] h-14 bg-pos-gold text-primary rounded-xl font-display font-bold text-lg flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-30 disabled:active:scale-100"
-            >
-              <CreditCard size={20} />
-              Pay ₱{total.toFixed(2)}
-            </button>
+          <div className="space-y-2">
+            {/* Incidentals + Discount row */}
+            <div className="flex gap-2 items-center">
+              <IncidentalsPopover onAddItem={onAddIncidental} />
+              <button
+                onClick={onApplyDiscount}
+                disabled={items.length === 0}
+                className="h-10 px-3 bg-foreground/5 border border-foreground/10 rounded-lg font-display font-semibold text-xs text-foreground/50 flex items-center gap-1.5 active:scale-[0.97] transition-transform disabled:opacity-30"
+              >
+                <ShieldCheck size={14} />
+                SC / PWD
+              </button>
+              <div className="flex-1" />
+            </div>
+
+            {/* Main action buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={onClearOrder}
+                disabled={items.length === 0}
+                className="flex-1 h-14 border-2 border-foreground/15 text-foreground/40 rounded-xl font-display font-bold text-base active:scale-[0.97] transition-transform disabled:opacity-30"
+              >
+                Clear
+              </button>
+              <button
+                onClick={onProceedToPayment}
+                disabled={items.length === 0}
+                className="flex-[2] h-14 bg-pos-gold text-primary rounded-xl font-display font-bold text-lg flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-30 disabled:active:scale-100"
+              >
+                <CreditCard size={20} />
+                Pay ₱{(discountApplied ? discountApplied.finalAmount : total).toFixed(2)}
+              </button>
+            </div>
           </div>
         )}
       </div>
