@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const VAT_RATE = 0.12;
-const SUPERVISOR_PIN = '1234'; // TODO: Move to config/DB
 
 export type DiscountType = 'SC' | 'PWD' | 'PROMO' | 'EMP';
 
@@ -38,8 +37,8 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
   const [promoPercent, setPromoPercent] = useState('');
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [approverName, setApproverName] = useState('');
   const [saving, setSaving] = useState(false);
-
   const isVatExempt = discountType === 'SC' || discountType === 'PWD';
   const effectivePercent = isVatExempt ? 20 : (parseFloat(promoPercent) || 0);
 
@@ -103,14 +102,25 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
     setStep('pin');
   };
 
-  const handlePinSubmit = () => {
-    if (pin !== SUPERVISOR_PIN) {
+
+  const handlePinSubmit = async () => {
+    const { data } = await supabase
+      .from('supervisors')
+      .select('name')
+      .eq('pin', pin)
+      .eq('is_active', true)
+      .limit(1);
+
+    const supervisors = data as unknown as { name: string }[] | null;
+
+    if (supervisors && supervisors.length > 0) {
+      setPinError(false);
+      setApproverName(supervisors[0].name);
+      setStep('breakdown');
+    } else {
       setPinError(true);
       setPin('');
-      return;
     }
-    setPinError(false);
-    setStep('breakdown');
   };
 
   const handleConfirm = async () => {
@@ -125,7 +135,7 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
           id_number: idNumber.trim(),
           discount_amount: computation.discountAmount,
           vat_removed: computation.vatRemoved,
-          approved_by: 'SUPERVISOR',
+          approved_by: approverName || 'SUPERVISOR',
           processed_by: 'CASHIER',
         });
       }
@@ -156,7 +166,7 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
         vatExclusive: computation.vatExclusive,
         discountAmount: computation.discountAmount,
         finalAmount: computation.finalAmount,
-        approvedBy: 'SUPERVISOR',
+        approvedBy: approverName || 'SUPERVISOR',
         discountPercent: effectivePercent,
       });
     } catch (err) {

@@ -12,12 +12,14 @@ import PaymentFlow from '@/components/pos/PaymentFlow';
 import DailySummary from '@/components/pos/DailySummary';
 import DiscountFlow, { DiscountResult } from '@/components/pos/DiscountFlow';
 import PrinterSettings from '@/components/pos/PrinterSettings';
-import { MenuCategory, PaymentMethod, MenuItem } from '@/components/pos/types';
-import { BarChart3, Printer, Settings2 } from 'lucide-react';
+import SupervisorManagement from '@/components/pos/SupervisorManagement';
+import VoidRefundFlow from '@/components/pos/VoidRefundFlow';
+import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder } from '@/components/pos/types';
+import { BarChart3, Printer, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
-type POSView = 'menu' | 'payment' | 'summary' | 'printer-settings';
+type POSView = 'menu' | 'payment' | 'summary' | 'printer-settings' | 'supervisors';
 
 const POS = () => {
   const order = useOrderState();
@@ -29,6 +31,7 @@ const POS = () => {
   const [addOnPromptItemId, setAddOnPromptItemId] = useState<string | null>(null);
   const [showDiscountFlow, setShowDiscountFlow] = useState(false);
   const [discountResult, setDiscountResult] = useState<DiscountResult | null>(null);
+  const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null>(null);
 
   const saleId = `ORD-${String(orderNumber).padStart(4, '0')}`;
 
@@ -100,7 +103,6 @@ const POS = () => {
       completeOrder(order.items, finalTotal, method);
       toast.success(`Order #${String(orderNumber).padStart(4, '0')} completed ✓`);
 
-      // Print receipt
       if (printer.settings.autoPrint || printer.status.connected) {
         const receiptData = buildReceiptData(method);
         printer.printReceipt(receiptData);
@@ -124,7 +126,6 @@ const POS = () => {
   }, [order]);
 
   const handleCancelPayment = useCallback(() => setView('menu'), []);
-
   const handleAddIncidental = useCallback((item: MenuItem) => order.addItem(item), [order]);
 
   const handleApplyDiscount = useCallback(() => {
@@ -141,6 +142,14 @@ const POS = () => {
     toast.success(`${result.discountType} discount applied — Final: ₱${result.finalAmount.toFixed(2)}`);
   }, []);
 
+  const handleVoidRefund = useCallback((completedOrder: CompletedOrder) => {
+    setVoidRefundOrder(completedOrder);
+  }, []);
+
+  const handleVoidRefundComplete = useCallback(() => {
+    setVoidRefundOrder(null);
+  }, []);
+
   const payableTotal = discountResult ? discountResult.finalAmount : order.total;
 
   return (
@@ -153,17 +162,23 @@ const POS = () => {
           <span className="font-display text-xs text-primary-foreground/40 hidden sm:block uppercase tracking-widest">POS</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Printer status indicator */}
+          {/* Printer status */}
           <button
             onClick={() => setView(view === 'printer-settings' ? 'menu' : 'printer-settings')}
             className={`h-10 w-10 rounded-lg flex items-center justify-center active:scale-[0.97] transition-transform ${
-              printer.status.connected
-                ? 'bg-green-500/20 text-green-300'
-                : 'bg-primary-foreground/10 text-primary-foreground/40'
+              printer.status.connected ? 'bg-pos-gold/20 text-pos-gold' : 'bg-primary-foreground/10 text-primary-foreground/40'
             }`}
             title={printer.status.connected ? `Printer: ${printer.status.deviceName}` : 'Printer disconnected'}
           >
             <Printer size={18} />
+          </button>
+          {/* Supervisor management */}
+          <button
+            onClick={() => setView(view === 'supervisors' ? 'menu' : 'supervisors')}
+            className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
+            title="Supervisor Management"
+          >
+            <Shield size={18} />
           </button>
           <span className="font-body text-sm text-primary-foreground/50">
             {new Date().toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -180,9 +195,11 @@ const POS = () => {
 
       {/* Main content */}
       {view === 'summary' ? (
-        <DailySummary summary={summary} onBack={() => setView('menu')} />
+        <DailySummary summary={summary} onBack={() => setView('menu')} onVoidRefund={handleVoidRefund} />
       ) : view === 'printer-settings' ? (
         <PrinterSettings onBack={() => setView('menu')} />
+      ) : view === 'supervisors' ? (
+        <SupervisorManagement onBack={() => setView('menu')} />
       ) : (
         <div className="flex-1 flex overflow-hidden">
           <div className="w-[65%] overflow-y-auto bg-background">
@@ -218,6 +235,9 @@ const POS = () => {
       )}
       {showDiscountFlow && (
         <DiscountFlow total={order.total} saleId={saleId} onApplyDiscount={handleDiscountApplied} onCancel={() => setShowDiscountFlow(false)} />
+      )}
+      {voidRefundOrder && (
+        <VoidRefundFlow order={voidRefundOrder} onComplete={handleVoidRefundComplete} onCancel={() => setVoidRefundOrder(null)} />
       )}
     </div>
   );
