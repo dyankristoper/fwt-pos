@@ -14,16 +14,254 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      inventory_cost_audit: {
+        Row: {
+          changed_at: string
+          id: string
+          inventory_item_id: string
+          new_cost: number | null
+          old_cost: number | null
+        }
+        Insert: {
+          changed_at?: string
+          id?: string
+          inventory_item_id: string
+          new_cost?: number | null
+          old_cost?: number | null
+        }
+        Update: {
+          changed_at?: string
+          id?: string
+          inventory_item_id?: string
+          new_cost?: number | null
+          old_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_cost_audit_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          category: Database["public"]["Enums"]["inventory_category"]
+          cost_per_unit: number
+          created_at: string
+          id: string
+          is_active: boolean
+          item_name: string
+          sku: string
+          supplier: string | null
+          unit_of_measure: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["inventory_category"]
+          cost_per_unit?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          item_name: string
+          sku: string
+          supplier?: string | null
+          unit_of_measure: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["inventory_category"]
+          cost_per_unit?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          item_name?: string
+          sku?: string
+          supplier?: string | null
+          unit_of_measure?: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      menu_item_ingredients: {
+        Row: {
+          computed_cost: number
+          created_at: string
+          id: string
+          inventory_item_id: string
+          menu_item_id: string
+          quantity_used: number
+          unit_of_measure: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at: string
+        }
+        Insert: {
+          computed_cost?: number
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          menu_item_id: string
+          quantity_used?: number
+          unit_of_measure: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at?: string
+        }
+        Update: {
+          computed_cost?: number
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          menu_item_id?: string
+          quantity_used?: number
+          unit_of_measure?: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_ingredients_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_ingredients_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_items: {
+        Row: {
+          branch_id: string | null
+          category: Database["public"]["Enums"]["menu_category"]
+          central_kitchen_flag: boolean | null
+          computed_food_cost: number
+          created_at: string
+          gross_margin_percent: number
+          gross_margin_value: number
+          id: string
+          is_active: boolean
+          is_combo_eligible: boolean
+          is_packaging: boolean
+          kcal: number | null
+          product_name: string
+          sku: string
+          srp: number
+          tax_category: string | null
+          updated_at: string
+          wastage_percent: number | null
+          yield_adjustment_factor: number | null
+        }
+        Insert: {
+          branch_id?: string | null
+          category: Database["public"]["Enums"]["menu_category"]
+          central_kitchen_flag?: boolean | null
+          computed_food_cost?: number
+          created_at?: string
+          gross_margin_percent?: number
+          gross_margin_value?: number
+          id?: string
+          is_active?: boolean
+          is_combo_eligible?: boolean
+          is_packaging?: boolean
+          kcal?: number | null
+          product_name: string
+          sku: string
+          srp?: number
+          tax_category?: string | null
+          updated_at?: string
+          wastage_percent?: number | null
+          yield_adjustment_factor?: number | null
+        }
+        Update: {
+          branch_id?: string | null
+          category?: Database["public"]["Enums"]["menu_category"]
+          central_kitchen_flag?: boolean | null
+          computed_food_cost?: number
+          created_at?: string
+          gross_margin_percent?: number
+          gross_margin_value?: number
+          id?: string
+          is_active?: boolean
+          is_combo_eligible?: boolean
+          is_packaging?: boolean
+          kcal?: number | null
+          product_name?: string
+          sku?: string
+          srp?: number
+          tax_category?: string | null
+          updated_at?: string
+          wastage_percent?: number | null
+          yield_adjustment_factor?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      vw_inventory_usage: {
+        Row: {
+          inventory_item_name: string | null
+          total_cost_consumed: number | null
+          total_quantity_used: number | null
+        }
+        Relationships: []
+      }
+      vw_menu_profitability: {
+        Row: {
+          computed_food_cost: number | null
+          gross_margin_percent: number | null
+          gross_margin_value: number | null
+          product_name: string | null
+          srp: number | null
+        }
+        Insert: {
+          computed_food_cost?: number | null
+          gross_margin_percent?: number | null
+          gross_margin_value?: number | null
+          product_name?: string | null
+          srp?: number | null
+        }
+        Update: {
+          computed_food_cost?: number | null
+          gross_margin_percent?: number | null
+          gross_margin_value?: number | null
+          product_name?: string | null
+          srp?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      inventory_category_code: {
+        Args: { cat: Database["public"]["Enums"]["inventory_category"] }
+        Returns: string
+      }
+      menu_category_code: {
+        Args: { cat: Database["public"]["Enums"]["menu_category"] }
+        Returns: string
+      }
     }
     Enums: {
-      [_ in never]: never
+      inventory_category:
+        | "Meat"
+        | "Buns"
+        | "Sauces"
+        | "Dry Mix"
+        | "Vegetables"
+        | "Beverages"
+        | "Packaging"
+        | "Others"
+      menu_category:
+        | "Signature Sandwiches"
+        | "Chicken Boxes"
+        | "Combo Upgrade"
+        | "Sides and Add-Ons"
+        | "Beverages"
+        | "Incidentals"
+      unit_of_measure: "g" | "ml" | "pc" | "set"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +388,26 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      inventory_category: [
+        "Meat",
+        "Buns",
+        "Sauces",
+        "Dry Mix",
+        "Vegetables",
+        "Beverages",
+        "Packaging",
+        "Others",
+      ],
+      menu_category: [
+        "Signature Sandwiches",
+        "Chicken Boxes",
+        "Combo Upgrade",
+        "Sides and Add-Ons",
+        "Beverages",
+        "Incidentals",
+      ],
+      unit_of_measure: ["g", "ml", "pc", "set"],
+    },
   },
 } as const
