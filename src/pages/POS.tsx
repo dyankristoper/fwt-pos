@@ -4,6 +4,7 @@ import { useDailySummary } from '@/components/pos/useDailySummary';
 import MenuPanel from '@/components/pos/MenuPanel';
 import OrderPanel from '@/components/pos/OrderPanel';
 import ComboPrompt from '@/components/pos/ComboPrompt';
+import AddOnPrompt from '@/components/pos/AddOnPrompt';
 import PaymentFlow from '@/components/pos/PaymentFlow';
 import DailySummary from '@/components/pos/DailySummary';
 import { MenuCategory, PaymentMethod, MenuItem } from '@/components/pos/types';
@@ -19,6 +20,38 @@ const POS = () => {
   const [view, setView] = useState<POSView>('menu');
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('sandwiches');
   const [orderNumber, setOrderNumber] = useState(1);
+  const [addOnPromptItemId, setAddOnPromptItemId] = useState<string | null>(null);
+
+  // After combo prompt resolves (accept or decline), show add-on prompt
+  const handleComboAccept = useCallback(() => {
+    const itemId = order.pendingComboItem?.instanceId;
+    if (itemId) {
+      order.makeCombo(itemId);
+      setAddOnPromptItemId(itemId);
+    }
+  }, [order]);
+
+  const handleComboDecline = useCallback(() => {
+    const itemId = order.pendingComboItem?.instanceId;
+    order.declineCombo();
+    if (itemId) {
+      setAddOnPromptItemId(itemId);
+    }
+  }, [order]);
+
+  const handleAddOn = useCallback((addOn: MenuItem) => {
+    if (addOnPromptItemId) {
+      order.addItem(addOn); // addItem attaches to lastMainItemRef
+    }
+  }, [addOnPromptItemId, order]);
+
+  const handleAddOnDone = useCallback(() => {
+    setAddOnPromptItemId(null);
+  }, []);
+
+  const addOnPromptItem = addOnPromptItemId
+    ? order.items.find(i => i.instanceId === addOnPromptItemId)
+    : null;
 
   const handleProceedToPayment = useCallback(() => {
     if (order.items.length === 0) return;
@@ -94,7 +127,6 @@ const POS = () => {
         <DailySummary summary={summary} onBack={() => setView('menu')} />
       ) : (
         <div className="flex-1 flex overflow-hidden">
-          {/* Left panel — Menu or Payment (65%) */}
           <div className="w-[65%] overflow-y-auto bg-background">
             {view === 'menu' && (
               <MenuPanel
@@ -111,8 +143,6 @@ const POS = () => {
               />
             )}
           </div>
-
-          {/* Right panel — Order Summary (35%) */}
           <div className="w-[35%] flex flex-col border-l-2 border-foreground/10 bg-card">
             <OrderPanel
               items={order.items}
@@ -134,10 +164,17 @@ const POS = () => {
       {order.pendingComboItem && (
         <ComboPrompt
           sandwichName={order.pendingComboItem.menuItem.name}
-          onSelectDrink={(drink: MenuItem) =>
-            order.makeCombo(order.pendingComboItem!.instanceId, drink)
-          }
-          onDecline={order.declineCombo}
+          onAcceptCombo={handleComboAccept}
+          onDecline={handleComboDecline}
+        />
+      )}
+
+      {/* Add-on prompt overlay */}
+      {addOnPromptItem && !order.pendingComboItem && (
+        <AddOnPrompt
+          itemName={addOnPromptItem.menuItem.name}
+          onSelectAddOn={handleAddOn}
+          onDone={handleAddOnDone}
         />
       )}
     </div>

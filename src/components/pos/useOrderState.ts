@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { MenuItem, OrderItem } from './types';
-import { COMBO_SURCHARGE } from './menuData';
+import { COMBO_SURCHARGE, comboEligibleDrinks } from './menuData';
 
 let nextId = 1;
 const generateId = () => `oi-${nextId++}-${Date.now()}`;
@@ -91,10 +91,11 @@ export function useOrderState() {
     }
   }, []);
 
-  const makeCombo = useCallback((instanceId: string, drink: MenuItem) => {
+  const makeCombo = useCallback((instanceId: string) => {
+    const comboDrink = comboEligibleDrinks[0]; // FWTea
     setItems(prev => prev.map(item =>
       item.instanceId === instanceId
-        ? { ...item, isCombo: true, comboDrink: drink }
+        ? { ...item, isCombo: true, comboDrink }
         : item
     ));
     setPendingComboItemId(null);
