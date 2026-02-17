@@ -66,7 +66,7 @@ const MenuPanel = ({ activeCategory, onCategoryChange, onItemTap }: MenuPanelPro
             </div>
             <div className="flex items-end justify-between w-full mt-3">
               <span className="font-display font-bold text-2xl text-pos-gold-dark">
-                ₱{item.price}
+                ₱{item.price.toFixed(2)}
               </span>
               <div className="flex items-center gap-2">
                 {item.kcal != null && (

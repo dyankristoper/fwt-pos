@@ -70,14 +70,14 @@ const OrderPanel = ({
                     </div>
                     {item.isCombo && item.comboDrink && (
                       <p className="text-[11px] text-foreground/45 mt-0.5">
-                        w/ Fries + {item.comboDrink.name}
+                        w/ Fries + FWTea
                       </p>
                     )}
                     {item.addOns.length > 0 && (
                       <div className="mt-1 space-y-0.5">
                         {item.addOns.map((addon, i) => (
                           <div key={i} className="flex items-center gap-1 text-[11px] text-foreground/55">
-                            <span>+ {addon.name} (+₱{addon.price})</span>
+                            <span>+ {addon.name} (+₱{addon.price.toFixed(2)})</span>
                             {!readOnly && (
                               <button
                                 onClick={() => onRemoveAddOn(item.instanceId, i)}
@@ -93,7 +93,7 @@ const OrderPanel = ({
                   </div>
                   <div className="flex items-start gap-1 shrink-0">
                     <span className="font-display font-bold text-sm text-foreground">
-                      ₱{calculateItemTotal(item)}
+                      ₱{calculateItemTotal(item).toFixed(2)}
                     </span>
                     {!readOnly && (
                       <button
@@ -139,7 +139,7 @@ const OrderPanel = ({
             Total
           </span>
           <span className="font-display text-3xl font-bold text-foreground">
-            ₱{total.toLocaleString()}
+            ₱{total.toFixed(2)}
           </span>
         </div>
         {!readOnly && (
@@ -157,7 +157,7 @@ const OrderPanel = ({
               className="flex-[2] h-14 bg-pos-gold text-primary rounded-xl font-display font-bold text-lg flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-30 disabled:active:scale-100"
             >
               <CreditCard size={20} />
-              Pay ₱{total.toLocaleString()}
+              Pay ₱{total.toFixed(2)}
             </button>
           </div>
         )}
