@@ -29,6 +29,21 @@ export interface CompletedOrder {
 
 export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'ewallet';
 
+export interface DiscountRecord {
+  discountType: string;
+  originalTotal: number;
+  discountAmount: number;
+  vatRemoved: number;
+  finalAmount: number;
+  orderId: string;
+}
+
+export interface VoidRefundRecord {
+  orderId: string;
+  type: 'void' | 'refund';
+  amount: number;
+}
+
 export interface DailySummaryData {
   totalOrders: number;
   totalSales: number;
@@ -37,4 +52,6 @@ export interface DailySummaryData {
   creditSales: number;
   ewalletSales: number;
   orders: CompletedOrder[];
+  discounts: DiscountRecord[];
+  voidRefunds: VoidRefundRecord[];
 }

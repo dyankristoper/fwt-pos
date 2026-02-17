@@ -10,6 +10,7 @@ import ComboPrompt from '@/components/pos/ComboPrompt';
 import AddOnPrompt from '@/components/pos/AddOnPrompt';
 import PaymentFlow from '@/components/pos/PaymentFlow';
 import DailySummary from '@/components/pos/DailySummary';
+import ZReadingReport from '@/components/pos/ZReadingReport';
 import DiscountFlow, { DiscountResult } from '@/components/pos/DiscountFlow';
 import PrinterSettings from '@/components/pos/PrinterSettings';
 import SupervisorManagement from '@/components/pos/SupervisorManagement';
@@ -19,11 +20,11 @@ import { BarChart3, Printer, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
-type POSView = 'menu' | 'payment' | 'summary' | 'printer-settings' | 'supervisors';
+type POSView = 'menu' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors';
 
 const POS = () => {
   const order = useOrderState();
-  const { summary, completeOrder } = useDailySummary();
+  const { summary, completeOrder, addDiscount, addVoidRefund } = useDailySummary();
   const printer = usePrinter();
   const [view, setView] = useState<POSView>('menu');
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('sandwiches');
@@ -139,16 +140,25 @@ const POS = () => {
   const handleDiscountApplied = useCallback((result: DiscountResult) => {
     setDiscountResult(result);
     setShowDiscountFlow(false);
+    addDiscount({
+      discountType: result.discountType,
+      originalTotal: result.originalTotal,
+      discountAmount: result.discountAmount,
+      vatRemoved: result.vatRemoved,
+      finalAmount: result.finalAmount,
+      orderId: saleId,
+    });
     toast.success(`${result.discountType} discount applied — Final: ₱${result.finalAmount.toFixed(2)}`);
-  }, []);
+  }, [addDiscount, saleId]);
 
   const handleVoidRefund = useCallback((completedOrder: CompletedOrder) => {
     setVoidRefundOrder(completedOrder);
   }, []);
 
-  const handleVoidRefundComplete = useCallback(() => {
+  const handleVoidRefundComplete = useCallback((order: CompletedOrder, type: 'void' | 'refund') => {
+    addVoidRefund({ orderId: order.id, type, amount: order.total });
     setVoidRefundOrder(null);
-  }, []);
+  }, [addVoidRefund]);
 
   const payableTotal = discountResult ? discountResult.finalAmount : order.total;
 
@@ -195,7 +205,9 @@ const POS = () => {
 
       {/* Main content */}
       {view === 'summary' ? (
-        <DailySummary summary={summary} onBack={() => setView('menu')} onVoidRefund={handleVoidRefund} />
+        <DailySummary summary={summary} onBack={() => setView('menu')} onVoidRefund={handleVoidRefund} onZReading={() => setView('z-reading')} />
+      ) : view === 'z-reading' ? (
+        <ZReadingReport summary={summary} onBack={() => setView('summary')} />
       ) : view === 'printer-settings' ? (
         <PrinterSettings onBack={() => setView('menu')} />
       ) : view === 'supervisors' ? (

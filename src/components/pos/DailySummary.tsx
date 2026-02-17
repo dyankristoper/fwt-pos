@@ -1,14 +1,15 @@
 import { DailySummaryData, CompletedOrder } from './types';
-import { ArrowLeft, Banknote, CreditCard, Smartphone, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Banknote, CreditCard, Smartphone, AlertTriangle, FileText } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface DailySummaryProps {
   summary: DailySummaryData;
   onBack: () => void;
   onVoidRefund?: (order: CompletedOrder) => void;
+  onZReading?: () => void;
 }
 
-const DailySummary = ({ summary, onBack, onVoidRefund }: DailySummaryProps) => {
+const DailySummary = ({ summary, onBack, onVoidRefund, onZReading }: DailySummaryProps) => {
   const cashOrders = summary.orders.filter(o => o.paymentMethod === 'cash').length;
   const debitOrders = summary.orders.filter(o => o.paymentMethod === 'debit').length;
   const creditOrders = summary.orders.filter(o => o.paymentMethod === 'credit').length;
@@ -30,13 +31,24 @@ const DailySummary = ({ summary, onBack, onVoidRefund }: DailySummaryProps) => {
               })}
             </p>
           </div>
-          <button
-            onClick={onBack}
-            className="h-12 px-6 bg-primary text-primary-foreground rounded-lg font-display font-semibold flex items-center gap-2 active:scale-[0.97] transition-transform"
-          >
-            <ArrowLeft size={20} />
-            Back to POS
-          </button>
+          <div className="flex items-center gap-3">
+            {onZReading && (
+              <button
+                onClick={onZReading}
+                className="h-12 px-6 bg-foreground/10 text-foreground rounded-lg font-display font-semibold flex items-center gap-2 active:scale-[0.97] transition-transform"
+              >
+                <FileText size={20} />
+                Z-Reading
+              </button>
+            )}
+            <button
+              onClick={onBack}
+              className="h-12 px-6 bg-primary text-primary-foreground rounded-lg font-display font-semibold flex items-center gap-2 active:scale-[0.97] transition-transform"
+            >
+              <ArrowLeft size={20} />
+              Back to POS
+            </button>
+          </div>
         </div>
 
         {/* Main stats */}
