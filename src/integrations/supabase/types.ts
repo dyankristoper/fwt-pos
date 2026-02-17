@@ -318,6 +318,75 @@ export type Database = {
         }
         Relationships: []
       }
+      supervisors: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          pin: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          pin: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          pin?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      void_refund_log: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          id: string
+          items_json: Json
+          original_amount: number
+          original_sale_id: string
+          processed_by: string | null
+          reason: string
+          refund_amount: number
+          type: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          items_json?: Json
+          original_amount?: number
+          original_sale_id: string
+          processed_by?: string | null
+          reason: string
+          refund_amount?: number
+          type: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          items_json?: Json
+          original_amount?: number
+          original_sale_id?: string
+          processed_by?: string | null
+          reason?: string
+          refund_amount?: number
+          type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       vw_inventory_usage: {
