@@ -1,10 +1,12 @@
 import { useState, useCallback, useMemo } from 'react';
-import { CompletedOrder, OrderItem, PaymentMethod, DailySummaryData } from './types';
+import { CompletedOrder, OrderItem, PaymentMethod, DailySummaryData, DiscountRecord, VoidRefundRecord } from './types';
 
 let orderCounter = 1;
 
 export function useDailySummary() {
   const [orders, setOrders] = useState<CompletedOrder[]>([]);
+  const [discounts, setDiscounts] = useState<DiscountRecord[]>([]);
+  const [voidRefunds, setVoidRefunds] = useState<VoidRefundRecord[]>([]);
 
   const completeOrder = useCallback((
     items: OrderItem[],
@@ -22,6 +24,14 @@ export function useDailySummary() {
     return newOrder;
   }, []);
 
+  const addDiscount = useCallback((record: DiscountRecord) => {
+    setDiscounts(prev => [...prev, record]);
+  }, []);
+
+  const addVoidRefund = useCallback((record: VoidRefundRecord) => {
+    setVoidRefunds(prev => [...prev, record]);
+  }, []);
+
   const summary: DailySummaryData = useMemo(() => {
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum, o) => sum + o.total, 0);
@@ -29,8 +39,8 @@ export function useDailySummary() {
     const debitSales = orders.filter(o => o.paymentMethod === 'debit').reduce((s, o) => s + o.total, 0);
     const creditSales = orders.filter(o => o.paymentMethod === 'credit').reduce((s, o) => s + o.total, 0);
     const ewalletSales = orders.filter(o => o.paymentMethod === 'ewallet').reduce((s, o) => s + o.total, 0);
-    return { totalOrders, totalSales, cashSales, debitSales, creditSales, ewalletSales, orders };
-  }, [orders]);
+    return { totalOrders, totalSales, cashSales, debitSales, creditSales, ewalletSales, orders, discounts, voidRefunds };
+  }, [orders, discounts, voidRefunds]);
 
-  return { summary, completeOrder };
+  return { summary, completeOrder, addDiscount, addVoidRefund };
 }

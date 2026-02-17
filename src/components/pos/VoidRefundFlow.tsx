@@ -7,7 +7,7 @@ import { calculateItemTotal } from './useOrderState';
 
 interface VoidRefundFlowProps {
   order: CompletedOrder;
-  onComplete: () => void;
+  onComplete: (order: CompletedOrder, type: 'void' | 'refund') => void;
   onCancel: () => void;
 }
 
@@ -98,7 +98,7 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
           ? `Order ${order.id} voided successfully`
           : `Refund ₱${order.total.toFixed(2)} processed for ${order.id}`
       );
-      onComplete();
+      onComplete(order, actionType);
     } catch {
       toast.error('Failed to process — try again');
     } finally {
