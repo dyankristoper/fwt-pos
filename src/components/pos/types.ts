@@ -4,6 +4,8 @@ export interface MenuItem {
   price: number;
   category: MenuCategory;
   spicy?: boolean;
+  kcal?: number | null;
+  grossMarginPercent?: number | null;
 }
 
 export type MenuCategory = 'sandwiches' | 'chicken' | 'sides' | 'addons' | 'beverages';

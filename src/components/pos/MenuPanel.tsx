@@ -64,9 +64,30 @@ const MenuPanel = ({ activeCategory, onCategoryChange, onItemTap }: MenuPanelPro
                 </span>
               )}
             </div>
-            <span className="font-display font-bold text-2xl text-pos-gold-dark mt-3">
-              ₱{item.price}
-            </span>
+            <div className="flex items-end justify-between w-full mt-3">
+              <span className="font-display font-bold text-2xl text-pos-gold-dark">
+                ₱{item.price}
+              </span>
+              <div className="flex items-center gap-2">
+                {item.kcal != null && (
+                  <span className="text-[10px] font-body text-foreground/40">
+                    {item.kcal} kcal
+                  </span>
+                )}
+                {item.grossMarginPercent != null && (
+                  <span
+                    className={`h-3 w-3 rounded-full shrink-0 ${
+                      item.grossMarginPercent >= 60
+                        ? 'bg-green-500'
+                        : item.grossMarginPercent >= 40
+                        ? 'bg-yellow-500'
+                        : 'bg-red-500'
+                    }`}
+                    title={`Margin: ${item.grossMarginPercent}%`}
+                  />
+                )}
+              </div>
+            </div>
           </button>
         ))}
       </div>
