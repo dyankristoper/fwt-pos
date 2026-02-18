@@ -1,0 +1,16 @@
+{
+  "name": "FWT POS",
+  "short_name": "FWT POS",
+  "start_url": "/pos",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#2A3C55",
+  "theme_color": "#2A3C55",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
