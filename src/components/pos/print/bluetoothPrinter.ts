@@ -82,15 +82,20 @@ class BluetoothPrinterService {
 
       this.device = device;
       device.addEventListener('gattserverdisconnected', () => {
+        console.error('[BT] GATT disconnected event fired');
         this.updateStatus({ connected: false, error: 'Printer disconnected' });
         this.characteristic = null;
       });
 
+      console.log('[BT] Connecting to device:', device.name);
       const connected = await this.connectToDevice(device);
       if (connected) {
+        console.log('[BT] Connected. Characteristic properties:', JSON.stringify({
+          write: this.characteristic?.properties?.write,
+          writeWithoutResponse: this.characteristic?.properties?.writeWithoutResponse,
+        }));
         // Allow BLE link to stabilise before any writes
         await new Promise(resolve => setTimeout(resolve, 500));
-        // Save for auto-reconnect
         localStorage.setItem(SAVED_PRINTER_KEY, device.id);
         this.updateStatus({ connected: true, deviceName: device.name || 'Unknown Printer', error: null });
       }
@@ -177,21 +182,32 @@ class BluetoothPrinterService {
     }
 
     try {
+      console.log('[BT] sendBytes: total length =', data.length, 'chunk size =', CHUNK_SIZE);
+      // Check GATT still connected before starting
+      if (!this.device?.gatt?.connected) {
+        console.error('[BT] GATT not connected before write');
+        this.updateStatus({ error: 'Printer not connected' });
+        return false;
+      }
+
       // Send in chunks to avoid buffer overflow
       for (let offset = 0; offset < data.length; offset += CHUNK_SIZE) {
         const chunk = data.slice(offset, offset + CHUNK_SIZE);
-        // Prefer writeValue (with response) – more reliable on most BLE printers
-        try {
+        console.log('[BT] Writing chunk at offset', offset, 'size', chunk.length);
+        
+        if (this.characteristic.properties.write) {
           await this.characteristic.writeValue(chunk);
-        } catch {
-          // Fallback to writeWithoutResponse if writeValue fails
+        } else {
           await this.characteristic.writeValueWithoutResponse(chunk);
         }
-        // Always pause between chunks
+        console.log('[BT] Chunk written OK, GATT still connected:', this.device?.gatt?.connected);
+        // Pause between chunks
         await new Promise(resolve => setTimeout(resolve, CHUNK_DELAY));
       }
+      console.log('[BT] All chunks sent successfully');
       return true;
     } catch (err: any) {
+      console.error('[BT] sendBytes error:', err?.message, err);
       this.updateStatus({ error: err?.message || 'Print failed' });
       return false;
     }
