@@ -1,7 +1,7 @@
 /**
  * Bluetooth Thermal Printer Service
- * Uses Web Bluetooth API (works on Android Chrome / Capacitor WebView)
- * Target: OFFICOM PT-120 via SPP
+ * Uses Capacitor SPP plugin on native Android, Web Bluetooth as fallback
+ * Target: OFFICOM PT-120 via SPP (Classic Bluetooth)
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -10,18 +10,9 @@ declare global {
     bluetooth?: any;
   }
 }
+import { Capacitor } from '@capacitor/core';
 
-// Common thermal printer BLE service UUIDs
-const PRINTER_SERVICE_UUIDS = [
-  '000018f0-0000-1000-8000-00805f9b34fb',
-  '0000ff00-0000-1000-8000-00805f9b34fb', // Most common for 58mm Chinese printers
-  'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-  '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC/Microchip
-];
-
-const SAVED_PRINTER_KEY = 'fwc_printer_mac';
-const CHUNK_SIZE = 20; // BLE default MTU is 23; 20 data bytes is safe
-const CHUNK_DELAY = 80; // ms between chunks – gives printer time to process
+const SAVED_PRINTER_KEY = 'fwc_printer_address';
 
 export interface PrinterStatus {
   connected: boolean;
@@ -31,11 +22,22 @@ export interface PrinterStatus {
 
 type StatusCallback = (status: PrinterStatus) => void;
 
+/**
+ * Dynamically import the Capacitor SPP plugin only on native
+ */
+async function getSppPlugin() {
+  try {
+    const mod = await import('@kduma-autoid/capacitor-bluetooth-printer');
+    return mod.BluetoothPrinter;
+  } catch {
+    return null;
+  }
+}
+
 class BluetoothPrinterService {
-  private device: any = null;
-  private characteristic: any = null;
   private statusCallbacks: Set<StatusCallback> = new Set();
   private _status: PrinterStatus = { connected: false, deviceName: null, error: null };
+  private connectedAddress: string | null = null;
 
   get status(): PrinterStatus {
     return { ...this._status };
@@ -52,14 +54,77 @@ class BluetoothPrinterService {
   }
 
   isSupported(): boolean {
+    // On native Android, always supported via SPP
+    if (Capacitor.isNativePlatform()) return true;
+    // On web, check Web Bluetooth
     return typeof navigator !== 'undefined' && 'bluetooth' in navigator;
+  }
+
+  isNative(): boolean {
+    return Capacitor.isNativePlatform();
   }
 
   /**
    * Scan for and connect to a thermal printer
    */
   async connect(): Promise<boolean> {
-    if (!this.isSupported()) {
+    if (this.isNative()) {
+      return this.connectNative();
+    }
+    return this.connectWebBluetooth();
+  }
+
+  // ─── Native SPP Flow ────────────────────────────────────
+
+  private async connectNative(): Promise<boolean> {
+    try {
+      this.updateStatus({ error: null });
+      const plugin = await getSppPlugin();
+      if (!plugin) {
+        this.updateStatus({ error: 'Bluetooth printer plugin not available' });
+        return false;
+      }
+
+      // List paired Bluetooth devices
+      const result = await plugin.list();
+      const devices = result.devices || [];
+
+      if (devices.length === 0) {
+        this.updateStatus({ error: 'No paired printers found. Pair the printer in Android Bluetooth settings first.' });
+        return false;
+      }
+
+      // Try saved printer first, then first available
+      const savedAddr = localStorage.getItem(SAVED_PRINTER_KEY);
+      let target = devices.find((d: any) => d.address === savedAddr);
+      if (!target) target = devices[0];
+
+      console.log('[BT-SPP] Connecting to:', target.name, target.address);
+      await plugin.connect({ address: target.address });
+
+      this.connectedAddress = target.address;
+      localStorage.setItem(SAVED_PRINTER_KEY, target.address);
+      this.updateStatus({
+        connected: true,
+        deviceName: target.name || target.address,
+        error: null,
+      });
+      console.log('[BT-SPP] Connected successfully');
+      return true;
+    } catch (err: any) {
+      console.error('[BT-SPP] Connection error:', err);
+      this.updateStatus({ error: err?.message || 'Failed to connect' });
+      return false;
+    }
+  }
+
+  // ─── Web Bluetooth Flow (fallback) ──────────────────────
+
+  private webDevice: any = null;
+  private webCharacteristic: any = null;
+
+  private async connectWebBluetooth(): Promise<boolean> {
+    if (!navigator.bluetooth) {
       this.updateStatus({ error: 'Bluetooth not supported in this browser' });
       return false;
     }
@@ -67,10 +132,14 @@ class BluetoothPrinterService {
     try {
       this.updateStatus({ error: null });
 
-      // Accept all devices so we don't miss the printer by name
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: PRINTER_SERVICE_UUIDS,
+        optionalServices: [
+          '000018f0-0000-1000-8000-00805f9b34fb',
+          '0000ff00-0000-1000-8000-00805f9b34fb',
+          'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+        ],
       });
 
       if (!device) {
@@ -78,26 +147,41 @@ class BluetoothPrinterService {
         return false;
       }
 
-      this.device = device;
+      this.webDevice = device;
       device.addEventListener('gattserverdisconnected', () => {
-        console.error('[BT] GATT disconnected event fired');
         this.updateStatus({ connected: false, error: 'Printer disconnected' });
-        this.characteristic = null;
+        this.webCharacteristic = null;
       });
 
-      console.log('[BT] Connecting to device:', device.name);
-      const connected = await this.connectToDevice(device);
-      if (connected) {
-        console.log('[BT] Connected. Characteristic properties:', JSON.stringify({
-          write: this.characteristic?.properties?.write,
-          writeWithoutResponse: this.characteristic?.properties?.writeWithoutResponse,
-        }));
-        // Allow BLE link to stabilise before any writes
-        await new Promise(resolve => setTimeout(resolve, 500));
-        localStorage.setItem(SAVED_PRINTER_KEY, device.id);
-        this.updateStatus({ connected: true, deviceName: device.name || 'Unknown Printer', error: null });
+      const server = await device.gatt?.connect();
+      if (!server) return false;
+
+      // Discover services
+      const services = await server.getPrimaryServices();
+      let characteristic: any = null;
+
+      for (const service of services) {
+        const chars = await service.getCharacteristics();
+        for (const c of chars) {
+          if (c.properties.write) {
+            characteristic = c;
+            break;
+          }
+          if (!characteristic && c.properties.writeWithoutResponse) {
+            characteristic = c;
+          }
+        }
+        if (characteristic?.properties?.write) break;
       }
-      return connected;
+
+      if (!characteristic) {
+        this.updateStatus({ error: 'No writable characteristic found' });
+        return false;
+      }
+
+      this.webCharacteristic = characteristic;
+      this.updateStatus({ connected: true, deviceName: device.name || 'Unknown Printer', error: null });
+      return true;
     } catch (err: any) {
       const msg = err?.message || 'Failed to connect';
       this.updateStatus({ error: msg.includes('cancelled') ? null : msg });
@@ -105,108 +189,54 @@ class BluetoothPrinterService {
     }
   }
 
-  private async connectToDevice(device: any): Promise<boolean> {
-    try {
-      const server = await device.gatt?.connect();
-      if (!server) return false;
-
-      // Try each known service UUID, then fall back to discovering all services
-      let service: any = null;
-      for (const uuid of PRINTER_SERVICE_UUIDS) {
-        try {
-          service = await server.getPrimaryService(uuid);
-          console.log('[BT] Found service:', uuid);
-          break;
-        } catch { /* try next */ }
-      }
-      if (!service) {
-        const services = await server.getPrimaryServices();
-        console.log('[BT] Discovered services:', services.length);
-        if (services.length > 0) service = services[0];
-      }
-
-      if (!service) {
-        this.updateStatus({ error: 'Printer service not found' });
-        return false;
-      }
-
-      // Find writable characteristic – prefer write-with-response for stability
-      const chars = await service.getCharacteristics();
-      let fallback: any = null;
-      for (const char of chars) {
-        if (char.properties.write) {
-          this.characteristic = char;
-          return true;
-        }
-        if (!fallback && char.properties.writeWithoutResponse) {
-          fallback = char;
-        }
-      }
-      if (fallback) {
-        this.characteristic = fallback;
-        return true;
-      }
-
-      this.updateStatus({ error: 'No writable characteristic found' });
-      return false;
-    } catch (err: any) {
-      this.updateStatus({ error: err?.message || 'Connection failed' });
-      return false;
-    }
-  }
-
   /**
-   * Attempt silent reconnection to previously paired printer
-   */
-  async autoReconnect(): Promise<boolean> {
-    const savedId = localStorage.getItem(SAVED_PRINTER_KEY);
-    if (!savedId || !this.isSupported()) return false;
-
-    try {
-      // Web Bluetooth doesn't support reconnection without user gesture
-      // This is a limitation - auto-reconnect only works with native plugins
-      return false;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Send raw bytes to printer in chunks
+   * Send raw bytes to printer
    */
   async sendBytes(data: Uint8Array): Promise<boolean> {
-    if (!this.characteristic) {
+    if (this.isNative()) {
+      return this.sendBytesNative(data);
+    }
+    return this.sendBytesWeb(data);
+  }
+
+  private async sendBytesNative(data: Uint8Array): Promise<boolean> {
+    try {
+      const plugin = await getSppPlugin();
+      if (!plugin) return false;
+
+      // Convert Uint8Array to string for the SPP plugin
+      const decoder = new TextDecoder('latin1');
+      const str = decoder.decode(data);
+      await plugin.print({ data: str });
+      console.log('[BT-SPP] Print data sent, bytes:', data.length);
+      return true;
+    } catch (err: any) {
+      console.error('[BT-SPP] Print error:', err);
+      this.updateStatus({ error: err?.message || 'Print failed' });
+      return false;
+    }
+  }
+
+  private async sendBytesWeb(data: Uint8Array): Promise<boolean> {
+    if (!this.webCharacteristic) {
       this.updateStatus({ error: 'Printer not connected' });
       return false;
     }
 
     try {
-      console.log('[BT] sendBytes: total length =', data.length, 'chunk size =', CHUNK_SIZE);
-      // Check GATT still connected before starting
-      if (!this.device?.gatt?.connected) {
-        console.error('[BT] GATT not connected before write');
-        this.updateStatus({ error: 'Printer not connected' });
-        return false;
-      }
-
-      // Send in chunks to avoid buffer overflow
-      for (let offset = 0; offset < data.length; offset += CHUNK_SIZE) {
-        const chunk = data.slice(offset, offset + CHUNK_SIZE);
-        console.log('[BT] Writing chunk at offset', offset, 'size', chunk.length);
-        
-        if (this.characteristic.properties.write) {
-          await this.characteristic.writeValue(chunk);
+      const CHUNK = 20;
+      const DELAY = 80;
+      for (let offset = 0; offset < data.length; offset += CHUNK) {
+        const chunk = data.slice(offset, offset + CHUNK);
+        if (this.webCharacteristic.properties.write) {
+          await this.webCharacteristic.writeValue(chunk);
         } else {
-          await this.characteristic.writeValueWithoutResponse(chunk);
+          await this.webCharacteristic.writeValueWithoutResponse(chunk);
         }
-        console.log('[BT] Chunk written OK, GATT still connected:', this.device?.gatt?.connected);
-        // Pause between chunks
-        await new Promise(resolve => setTimeout(resolve, CHUNK_DELAY));
+        await new Promise(resolve => setTimeout(resolve, DELAY));
       }
-      console.log('[BT] All chunks sent successfully');
       return true;
     } catch (err: any) {
-      console.error('[BT] sendBytes error:', err?.message, err);
       this.updateStatus({ error: err?.message || 'Print failed' });
       return false;
     }
@@ -215,13 +245,41 @@ class BluetoothPrinterService {
   /**
    * Disconnect from printer
    */
-  disconnect() {
-    if (this.device?.gatt?.connected) {
-      this.device.gatt.disconnect();
+  async disconnect() {
+    if (this.isNative()) {
+      try {
+        const plugin = await getSppPlugin();
+        await plugin?.disconnect();
+      } catch { /* ignore */ }
+      this.connectedAddress = null;
+    } else {
+      if (this.webDevice?.gatt?.connected) {
+        this.webDevice.gatt.disconnect();
+      }
+      this.webDevice = null;
+      this.webCharacteristic = null;
     }
-    this.device = null;
-    this.characteristic = null;
     this.updateStatus({ connected: false, deviceName: null, error: null });
+  }
+
+  /**
+   * Attempt silent reconnection to previously paired printer
+   */
+  async autoReconnect(): Promise<boolean> {
+    if (!this.isNative()) return false;
+    const savedAddr = localStorage.getItem(SAVED_PRINTER_KEY);
+    if (!savedAddr) return false;
+
+    try {
+      const plugin = await getSppPlugin();
+      if (!plugin) return false;
+      await plugin.connect({ address: savedAddr });
+      this.connectedAddress = savedAddr;
+      this.updateStatus({ connected: true, deviceName: savedAddr, error: null });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -230,13 +288,13 @@ class BluetoothPrinterService {
   async testPrint(): Promise<boolean> {
     const encoder = new TextEncoder();
     const testData = encoder.encode(
-      '\x1b\x40' + // Init
-      '\x1b\x61\x01' + // Center
+      '\x1b\x40' +       // Init
+      '\x1b\x61\x01' +   // Center
       '*** TEST PRINT ***\n' +
       'Alignment OK\n' +
       'Printer OK\n' +
       '\n\n\n' +
-      '\x1d\x56\x01' // Cut
+      '\x1d\x56\x01'     // Cut
     );
     return this.sendBytes(testData);
   }
