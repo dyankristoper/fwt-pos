@@ -11,10 +11,13 @@ declare global {
   }
 }
 
-const PRINTER_SERVICE_UUID = '000018f0-0000-1000-8000-00805f9b34fb';
-// Some printers use these alternate UUIDs
-const ALT_SERVICE_UUID = 'e7810a71-73ae-499d-8c15-faa9aef0c3f2';
-const ALT_CHAR_UUID = 'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f';
+// Common thermal printer BLE service UUIDs
+const PRINTER_SERVICE_UUIDS = [
+  '000018f0-0000-1000-8000-00805f9b34fb',
+  '0000ff00-0000-1000-8000-00805f9b34fb', // Most common for 58mm Chinese printers
+  'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC/Microchip
+];
 
 const SAVED_PRINTER_KEY = 'fwc_printer_mac';
 const CHUNK_SIZE = 20; // BLE default MTU is 23; 20 data bytes is safe
@@ -64,15 +67,10 @@ class BluetoothPrinterService {
     try {
       this.updateStatus({ error: null });
 
-      // Request device with printer-like filters
+      // Accept all devices so we don't miss the printer by name
       const device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { namePrefix: 'PT' },
-          { namePrefix: 'Printer' },
-          { namePrefix: 'POS' },
-          { namePrefix: 'OFFICOM' },
-        ],
-        optionalServices: [PRINTER_SERVICE_UUID, ALT_SERVICE_UUID],
+        acceptAllDevices: true,
+        optionalServices: PRINTER_SERVICE_UUIDS,
       });
 
       if (!device) {
@@ -112,18 +110,19 @@ class BluetoothPrinterService {
       const server = await device.gatt?.connect();
       if (!server) return false;
 
-      // Try primary service UUID, then alternate
+      // Try each known service UUID, then fall back to discovering all services
       let service: any = null;
-      try {
-        service = await server.getPrimaryService(PRINTER_SERVICE_UUID);
-      } catch {
+      for (const uuid of PRINTER_SERVICE_UUIDS) {
         try {
-          service = await server.getPrimaryService(ALT_SERVICE_UUID);
-        } catch {
-          // Try getting all services
-          const services = await server.getPrimaryServices();
-          if (services.length > 0) service = services[0];
-        }
+          service = await server.getPrimaryService(uuid);
+          console.log('[BT] Found service:', uuid);
+          break;
+        } catch { /* try next */ }
+      }
+      if (!service) {
+        const services = await server.getPrimaryServices();
+        console.log('[BT] Discovered services:', services.length);
+        if (services.length > 0) service = services[0];
       }
 
       if (!service) {
