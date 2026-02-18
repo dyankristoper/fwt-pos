@@ -17,8 +17,8 @@ const ALT_SERVICE_UUID = 'e7810a71-73ae-499d-8c15-faa9aef0c3f2';
 const ALT_CHAR_UUID = 'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f';
 
 const SAVED_PRINTER_KEY = 'fwc_printer_mac';
-const CHUNK_SIZE = 512; // bytes per write
-const CHUNK_DELAY = 50; // ms between chunks
+const CHUNK_SIZE = 20; // BLE default MTU is 23; 20 data bytes is safe
+const CHUNK_DELAY = 80; // ms between chunks – gives printer time to process
 
 export interface PrinterStatus {
   connected: boolean;
@@ -126,13 +126,21 @@ class BluetoothPrinterService {
         return false;
       }
 
-      // Find writable characteristic
+      // Find writable characteristic – prefer write-with-response for stability
       const chars = await service.getCharacteristics();
+      let fallback: any = null;
       for (const char of chars) {
-        if (char.properties.write || char.properties.writeWithoutResponse) {
+        if (char.properties.write) {
           this.characteristic = char;
           return true;
         }
+        if (!fallback && char.properties.writeWithoutResponse) {
+          fallback = char;
+        }
+      }
+      if (fallback) {
+        this.characteristic = fallback;
+        return true;
       }
 
       this.updateStatus({ error: 'No writable characteristic found' });
