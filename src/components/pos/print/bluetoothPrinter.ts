@@ -88,6 +88,8 @@ class BluetoothPrinterService {
 
       const connected = await this.connectToDevice(device);
       if (connected) {
+        // Allow BLE link to stabilise before any writes
+        await new Promise(resolve => setTimeout(resolve, 500));
         // Save for auto-reconnect
         localStorage.setItem(SAVED_PRINTER_KEY, device.id);
         this.updateStatus({ connected: true, deviceName: device.name || 'Unknown Printer', error: null });
@@ -170,14 +172,15 @@ class BluetoothPrinterService {
       // Send in chunks to avoid buffer overflow
       for (let offset = 0; offset < data.length; offset += CHUNK_SIZE) {
         const chunk = data.slice(offset, offset + CHUNK_SIZE);
-        if (this.characteristic.properties.writeWithoutResponse) {
-          await this.characteristic.writeValueWithoutResponse(chunk);
-        } else {
+        // Prefer writeValue (with response) – more reliable on most BLE printers
+        try {
           await this.characteristic.writeValue(chunk);
+        } catch {
+          // Fallback to writeWithoutResponse if writeValue fails
+          await this.characteristic.writeValueWithoutResponse(chunk);
         }
-        if (offset + CHUNK_SIZE < data.length) {
-          await new Promise(resolve => setTimeout(resolve, CHUNK_DELAY));
-        }
+        // Always pause between chunks
+        await new Promise(resolve => setTimeout(resolve, CHUNK_DELAY));
       }
       return true;
     } catch (err: any) {
