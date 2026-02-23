@@ -15,6 +15,15 @@ export interface ItemDiscount {
   type: 'percent' | 'fixed';
   value: number;
   reason: string;
+  discount_id?: string;
+  discount_name?: string;
+  discount_code?: string;
+  id_number?: string;
+  id_type?: string;
+  customer_name?: string;
+  promo_code_used?: string;
+  approved_by?: string;
+  is_vat_exempt?: boolean;
 }
 
 export interface OrderItem {

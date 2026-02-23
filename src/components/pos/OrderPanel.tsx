@@ -1,6 +1,6 @@
-import { OrderItem, ItemDiscount } from './types';
+import { OrderItem } from './types';
 import { calculateItemTotal, calculateItemDiscount, calculateItemFinal } from './useOrderState';
-import { X, Plus, Minus, ShoppingCart, CreditCard, ShieldCheck, Tag } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, CreditCard, Tag } from 'lucide-react';
 import IncidentalsPopover from './IncidentalsPopover';
 import { MenuItem } from './types';
 
@@ -16,9 +16,7 @@ interface OrderPanelProps {
   onClearOrder: () => void;
   onProceedToPayment: () => void;
   onAddIncidental: (item: MenuItem) => void;
-  onApplyDiscount: () => void;
   onItemDiscount: (item: OrderItem) => void;
-  discountApplied?: { discountType: string; finalAmount: number } | null;
   serviceCharge?: { enabled: boolean; percent: number; amount: number };
 }
 
@@ -34,12 +32,10 @@ const OrderPanel = ({
   onClearOrder,
   onProceedToPayment,
   onAddIncidental,
-  onApplyDiscount,
   onItemDiscount,
-  discountApplied,
   serviceCharge,
 }: OrderPanelProps) => {
-  const payableTotal = discountApplied ? discountApplied.finalAmount : (total + (serviceCharge?.amount ?? 0));
+  const payableTotal = total + (serviceCharge?.amount ?? 0);
 
   return (
     <div className="flex flex-col h-full">
@@ -113,9 +109,14 @@ const OrderPanel = ({
                         <div className="mt-1 flex items-center gap-1 text-[11px]">
                           <Tag size={10} className="text-accent" />
                           <span className="text-accent font-display font-semibold">
-                            -{item.discount.type === 'percent' ? `${item.discount.value}%` : `₱${item.discount.value.toFixed(2)}`}
+                            {item.discount.discount_name || (item.discount.type === 'percent' ? `${item.discount.value}%` : `₱${item.discount.value.toFixed(2)}`)}
                           </span>
-                          <span className="text-foreground/35 truncate max-w-[120px]">({item.discount.reason})</span>
+                          {item.discount.id_number && (
+                            <span className="text-foreground/35 truncate max-w-[100px]">ID: {item.discount.id_number}</span>
+                          )}
+                          {!item.discount.id_number && item.discount.reason && (
+                            <span className="text-foreground/35 truncate max-w-[120px]">({item.discount.reason})</span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -206,37 +207,16 @@ const OrderPanel = ({
           <div className="flex items-center justify-between pt-1 border-t border-foreground/5">
             <span className="font-display text-base font-semibold text-foreground/60 uppercase tracking-wide">Total</span>
             <span className="font-display text-3xl font-bold text-foreground">
-              ₱{(total + (serviceCharge?.amount ?? 0)).toFixed(2)}
+              ₱{payableTotal.toFixed(2)}
             </span>
           </div>
         </div>
 
-        {/* Discount applied indicator */}
-        {discountApplied && (
-          <div className="bg-secondary border border-foreground/10 rounded-lg p-2 mb-2 flex items-center justify-between">
-            <span className="text-xs font-display font-semibold text-foreground flex items-center gap-1">
-              <ShieldCheck size={14} className="text-accent" />
-              {discountApplied.discountType} Discount Applied
-            </span>
-            <span className="font-display font-bold text-foreground">
-              ₱{discountApplied.finalAmount.toFixed(2)}
-            </span>
-          </div>
-        )}
-
         {!readOnly && (
           <div className="space-y-2">
-            {/* Incidentals + Discount row */}
+            {/* Incidentals row */}
             <div className="flex gap-2 items-center">
               <IncidentalsPopover onAddItem={onAddIncidental} />
-              <button
-                onClick={onApplyDiscount}
-                disabled={items.length === 0}
-                className="h-10 px-3 bg-foreground/5 border border-foreground/10 rounded-lg font-display font-semibold text-xs text-foreground/50 flex items-center gap-1.5 active:scale-[0.97] transition-transform disabled:opacity-30"
-              >
-                <ShieldCheck size={14} />
-                Discount
-              </button>
               <div className="flex-1" />
             </div>
 
