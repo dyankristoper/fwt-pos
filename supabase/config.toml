@@ -1,1 +1,7 @@
 project_id = "ngbniovozalshujbpjoq"
+
+[functions.pos-deduct]
+verify_jwt = false
+
+[functions.stock-check]
+verify_jwt = false

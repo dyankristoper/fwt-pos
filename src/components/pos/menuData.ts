@@ -19,36 +19,36 @@ export const categoryImages: Record<MenuCategory, string> = {
 
 export const menuItems: MenuItem[] = [
   // Signature Sandwiches
-  { id: 'classic', name: 'Classic Chicken Sandwich', price: 220, category: 'sandwiches', kcal: 720 },
-  { id: 'featherweight', name: 'Featherweight Sandwich', price: 180, category: 'sandwiches', kcal: 725 },
-  { id: 'honey-mustard', name: 'Honey Mustard', price: 220, category: 'sandwiches', kcal: 670 },
-  { id: 'barbecue', name: 'BBQ Chicken Sandwich', price: 250, category: 'sandwiches', kcal: 730 },
-  { id: 'red-heat', name: 'Red Heat Chicken Sandwich', price: 250, category: 'sandwiches', spicy: true, kcal: 760 },
+  { id: 'classic', sku_id: 'FW-MENU-SAN-0001', name: 'Classic Chicken Sandwich', price: 220, category: 'sandwiches', kcal: 720 },
+  { id: 'featherweight', sku_id: 'FW-MENU-SAN-0002', name: 'Featherweight Sandwich', price: 180, category: 'sandwiches', kcal: 725 },
+  { id: 'honey-mustard', sku_id: 'FW-MENU-SAN-0003', name: 'Honey Mustard', price: 220, category: 'sandwiches', kcal: 670 },
+  { id: 'barbecue', sku_id: 'FW-MENU-SAN-0004', name: 'BBQ Chicken Sandwich', price: 250, category: 'sandwiches', kcal: 730 },
+  { id: 'red-heat', sku_id: 'FW-MENU-SAN-0005', name: 'Red Heat Chicken Sandwich', price: 250, category: 'sandwiches', spicy: true, kcal: 760 },
 
   // Chicken Boxes
-  { id: 'box-3', name: 'Box of Three', price: 340, category: 'chicken', kcal: 1450 },
-  { id: 'box-5', name: 'Box of Five', price: 490, category: 'chicken', kcal: 2300 },
-  { id: 'chicken-rice', name: 'Chicken and Rice Meal', price: 160, category: 'chicken', kcal: 850 },
+  { id: 'box-3', sku_id: 'FW-MENU-CHK-0001', name: 'Box of Three', price: 340, category: 'chicken', kcal: 1450 },
+  { id: 'box-5', sku_id: 'FW-MENU-CHK-0002', name: 'Box of Five', price: 490, category: 'chicken', kcal: 2300 },
+  { id: 'chicken-rice', sku_id: 'FW-MENU-CHK-0003', name: 'Chicken and Rice Meal', price: 160, category: 'chicken', kcal: 850 },
 
   // Sides & Add-ons
-  { id: 'fries', name: 'Fries (80g)', price: 75, category: 'sides', kcal: 250 },
-  { id: 'slaw', name: 'Slaw (120g)', price: 65, category: 'sides', kcal: 180 },
-  { id: 'rice', name: 'Rice (190g)', price: 40, category: 'sides', kcal: 250 },
+  { id: 'fries', sku_id: 'FW-MENU-SID-0001', name: 'Fries (80g)', price: 75, category: 'sides', kcal: 250 },
+  { id: 'slaw', sku_id: 'FW-MENU-SID-0002', name: 'Slaw (120g)', price: 65, category: 'sides', kcal: 180 },
+  { id: 'rice', sku_id: 'FW-MENU-SID-0003', name: 'Rice (190g)', price: 40, category: 'sides', kcal: 250 },
 
   // Add-ons
-  { id: 'cheese', name: 'Cheese (14g)', price: 25, category: 'addons', kcal: 60 },
-  { id: 'lettuce', name: 'Lettuce (10g)', price: 15, category: 'addons', kcal: 2 },
-  { id: 'pickle', name: 'Pickles (10g)', price: 15, category: 'addons', kcal: 3 },
-  { id: 'sig-sauce', name: 'Signature Sauce (60g)', price: 50, category: 'addons', kcal: 150 },
-  { id: 'bbq-sauce', name: 'BBQ Sauce (60g)', price: 50, category: 'addons', kcal: 90 },
-  { id: 'hm-sauce', name: 'Honey Mustard (60g)', price: 50, category: 'addons', kcal: 90 },
-  { id: 'ko-sauce', name: 'KO Sauce (Hot Sauce) (60g)', price: 50, category: 'addons', kcal: 90 },
-  { id: 'rh-sauce', name: 'Red Heat Sauce (60g)', price: 50, category: 'addons', kcal: 130 },
+  { id: 'cheese', sku_id: 'FW-MENU-SID-0004', name: 'Cheese (14g)', price: 25, category: 'addons', kcal: 60 },
+  { id: 'lettuce', sku_id: 'FW-MENU-SID-0005', name: 'Lettuce (10g)', price: 15, category: 'addons', kcal: 2 },
+  { id: 'pickle', sku_id: 'FW-MENU-SID-0006', name: 'Pickles (10g)', price: 15, category: 'addons', kcal: 3 },
+  { id: 'sig-sauce', sku_id: 'FW-MENU-SID-0007', name: 'Signature Sauce (60g)', price: 50, category: 'addons', kcal: 150 },
+  { id: 'bbq-sauce', sku_id: 'FW-MENU-SID-0008', name: 'BBQ Sauce (60g)', price: 50, category: 'addons', kcal: 90 },
+  { id: 'hm-sauce', sku_id: 'FW-MENU-SID-0009', name: 'Honey Mustard (60g)', price: 50, category: 'addons', kcal: 90 },
+  { id: 'ko-sauce', sku_id: 'FW-MENU-SID-0010', name: 'KO Sauce (Hot Sauce) (60g)', price: 50, category: 'addons', kcal: 90 },
+  { id: 'rh-sauce', sku_id: 'FW-MENU-SID-0011', name: 'Red Heat Sauce (60g)', price: 50, category: 'addons', kcal: 130 },
 
   // Beverages
-  { id: 'iced-tea', name: 'FWTea (460ml)', price: 80, category: 'beverages', kcal: 190 },
-  { id: 'coke', name: 'Coke Products in Can', price: 75, category: 'beverages', kcal: 140 },
-  { id: 'water', name: 'Bottled Water (500ml)', price: 30, category: 'beverages', kcal: 0 },
+  { id: 'iced-tea', sku_id: 'FW-MENU-BEV-0001', name: 'FWTea (460ml)', price: 80, category: 'beverages', kcal: 190 },
+  { id: 'coke', sku_id: 'FW-MENU-BEV-0002', name: 'Coke Products in Can', price: 75, category: 'beverages', kcal: 140 },
+  { id: 'water', sku_id: 'FW-MENU-BEV-0003', name: 'Bottled Water (500ml)', price: 30, category: 'beverages', kcal: 0 },
 ];
 
 export const categoryLabels: Record<MenuCategory, string> = {
