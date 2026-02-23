@@ -101,6 +101,8 @@ export function useInventoryIntegration() {
     };
   }, [isOnline]);
 
+  const MAX_RETRIES = 10;
+
   const retryPendingTransactions = useCallback(async () => {
     const { data: pending } = await (supabase
       .from('pending_transactions') as any)
@@ -112,6 +114,15 @@ export function useInventoryIntegration() {
     if (!pending?.length) return;
 
     for (const tx of pending) {
+      // Cap retries
+      if (tx.retry_count >= MAX_RETRIES) {
+        await (supabase.from('pending_transactions') as any)
+          .update({ status: 'FAILED', last_error: `Max retries (${MAX_RETRIES}) exceeded` })
+          .eq('transaction_id', tx.transaction_id);
+        toast.error(`Order ${tx.order_id} failed after ${MAX_RETRIES} retries — manual check needed`);
+        continue;
+      }
+
       try {
         const { data, error } = await supabase.functions.invoke('pos-deduct', {
           body: {

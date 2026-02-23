@@ -39,20 +39,25 @@ Deno.serve(async (req) => {
       .eq("transaction_id", transaction_id)
       .maybeSingle();
 
-    if (existing && existing.status !== "PENDING") {
+    // Only short-circuit for SUCCESS — allow FAILED to be retried
+    if (existing && existing.status === "SUCCESS") {
       return new Response(
-        JSON.stringify(existing.api_response || { status: existing.status, transaction_id }),
-        { status: existing.status === "SUCCESS" ? 200 : 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify(existing.api_response || { status: "SUCCESS", transaction_id }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Record as PENDING
+    // Record as PENDING (or reset FAILED back to PENDING for retry)
     if (!existing) {
       await supabase.from("pos_transactions").insert({
         transaction_id, order_id, location_id,
         actual_date: actual_date || new Date().toISOString().slice(0, 10),
         items, user_id, status: "PENDING",
       });
+    } else if (existing.status === "FAILED") {
+      await supabase.from("pos_transactions")
+        .update({ status: "PENDING" })
+        .eq("transaction_id", transaction_id);
     }
 
     // Forward to FWTeam App
