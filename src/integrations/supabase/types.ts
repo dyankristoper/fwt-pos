@@ -241,6 +241,102 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_transactions: {
+        Row: {
+          actual_date: string
+          created_at: string
+          id: string
+          items: Json
+          last_error: string | null
+          location_id: string
+          order_id: string
+          order_items: Json
+          order_total: number
+          payment_method: string
+          retry_count: number
+          status: string
+          transaction_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          actual_date?: string
+          created_at?: string
+          id?: string
+          items?: Json
+          last_error?: string | null
+          location_id: string
+          order_id: string
+          order_items?: Json
+          order_total?: number
+          payment_method: string
+          retry_count?: number
+          status?: string
+          transaction_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          actual_date?: string
+          created_at?: string
+          id?: string
+          items?: Json
+          last_error?: string | null
+          location_id?: string
+          order_id?: string
+          order_items?: Json
+          order_total?: number
+          payment_method?: string
+          retry_count?: number
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      pos_transactions: {
+        Row: {
+          actual_date: string
+          api_response: Json | null
+          created_at: string
+          id: string
+          items: Json
+          location_id: string
+          order_id: string
+          status: string
+          transaction_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          actual_date?: string
+          api_response?: Json | null
+          created_at?: string
+          id?: string
+          items?: Json
+          location_id: string
+          order_id: string
+          status?: string
+          transaction_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          actual_date?: string
+          api_response?: Json | null
+          created_at?: string
+          id?: string
+          items?: Json
+          location_id?: string
+          order_id?: string
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       sales_discounts: {
         Row: {
           created_at: string
