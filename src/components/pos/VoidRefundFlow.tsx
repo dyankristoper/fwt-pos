@@ -4,7 +4,6 @@ import { ArrowLeft, AlertTriangle, RotateCcw, XCircle, Search, Loader2 } from 'l
 import { toast } from 'sonner';
 import { CompletedOrder, OrderItem } from './types';
 import { calculateItemTotal } from './useOrderState';
-import { comboSkuMap } from './menuData';
 
 interface VoidRefundFlowProps {
   order?: CompletedOrder | null;
@@ -37,7 +36,7 @@ function buildDeductionItemsFromOrder(items: OrderItem[]): { sku_code: string; q
   const skuMap = new Map<string, number>();
   for (const item of items) {
     if (item.isCombo) {
-      const comboSku = comboSkuMap[item.menuItem.id];
+      const comboSku = item.menuItem.combo_sku;
       if (comboSku) {
         skuMap.set(comboSku, (skuMap.get(comboSku) || 0) + item.quantity);
       } else {

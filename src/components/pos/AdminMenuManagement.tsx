@@ -19,6 +19,7 @@ interface MenuItemRow {
   display_size: string | null;
   is_active: boolean;
   is_combo_eligible: boolean;
+  combo_sku: string | null;
   pos_category_id: string | null;
   category: string;
   pos_categories?: { name: string } | null;
@@ -48,6 +49,7 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
   const [formSize, setFormSize] = useState('');
   const [formCategoryId, setFormCategoryId] = useState('');
   const [formComboEligible, setFormComboEligible] = useState(false);
+  const [formComboSku, setFormComboSku] = useState('');
   const [skuValidating, setSkuValidating] = useState(false);
   const [skuValid, setSkuValid] = useState<boolean | null>(null);
 
@@ -59,7 +61,7 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
   const fetchItems = useCallback(async () => {
     const { data } = await supabase
       .from('menu_items')
-      .select('id, sku, product_name, srp, kcal, display_size, is_active, is_combo_eligible, pos_category_id, category, pos_categories(name)')
+      .select('id, sku, product_name, srp, kcal, display_size, is_active, is_combo_eligible, combo_sku, pos_category_id, category, pos_categories(name)')
       .order('product_name', { ascending: true }) as any;
     if (data) setItems(data);
     setLoading(false);
@@ -87,6 +89,7 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
     setFormSize('');
     setFormCategoryId('');
     setFormComboEligible(false);
+    setFormComboSku('');
     setSkuValid(null);
   };
 
@@ -101,6 +104,7 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
     setFormSize(item.display_size || '');
     setFormCategoryId(item.pos_category_id || '');
     setFormComboEligible(item.is_combo_eligible);
+    setFormComboSku(item.combo_sku || '');
     setSkuValid(true); // Existing item assumed valid
     setView('form');
   };
@@ -160,6 +164,7 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
         display_size: formSize.trim() || null,
         pos_category_id: formCategoryId,
         is_combo_eligible: formComboEligible,
+        combo_sku: formComboEligible && formComboSku.trim() ? formComboSku.trim() : null,
         category: enumCategory,
       };
 
@@ -317,6 +322,23 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
                 {formComboEligible ? <ToggleRight size={24} className="text-pos-gold-dark" /> : <ToggleLeft size={24} className="text-foreground/30" />}
               </button>
             </div>
+
+            {formComboEligible && (
+              <div>
+                <label className={labelClass}>Combo SKU Code</label>
+                <input
+                  type="text"
+                  value={formComboSku}
+                  onChange={e => setFormComboSku(e.target.value)}
+                  maxLength={50}
+                  className={inputClass}
+                  placeholder="FW-MENU-CMB-0001"
+                />
+                <p className="text-[10px] text-foreground/40 mt-1">
+                  SKU used for inventory deduction when this item is ordered as a combo
+                </p>
+              </div>
+            )}
           </div>
 
           <button onClick={handleSave} disabled={saving || !formName.trim() || !formSku.trim() || !formPrice || skuValid === false}
@@ -452,7 +474,9 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
                       <span className="bg-foreground/10 text-foreground/60 text-[10px] font-display font-bold px-1.5 py-0.5 rounded">{item.display_size}</span>
                     )}
                     {item.is_combo_eligible && (
-                      <span className="bg-accent/10 text-accent text-[10px] font-display font-bold px-1.5 py-0.5 rounded">COMBO</span>
+                      <span className="bg-accent/10 text-accent text-[10px] font-display font-bold px-1.5 py-0.5 rounded">
+                        COMBO{item.combo_sku ? ` · ${item.combo_sku}` : ''}
+                      </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1 text-[11px] text-foreground/45">

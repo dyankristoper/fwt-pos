@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem } from './types';
 import { calculateItemTotal } from './useOrderState';
-import { comboSkuMap } from './menuData';
 import { toast } from 'sonner';
 
 export interface DeductionItem {
@@ -39,8 +38,8 @@ function buildDeductionItems(orderItems: OrderItem[]): DeductionItem[] {
 
   for (const item of orderItems) {
     if (item.isCombo) {
-      // Use dedicated combo SKU instead of sandwich + drink separately
-      const comboSku = comboSkuMap[item.menuItem.id];
+      // Use dedicated combo SKU from DB instead of hardcoded map
+      const comboSku = item.menuItem.combo_sku;
       if (comboSku) {
         skuMap.set(comboSku, (skuMap.get(comboSku) || 0) + item.quantity);
       } else {
