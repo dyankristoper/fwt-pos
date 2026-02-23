@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Plus, Eye, EyeOff, Shield, ShieldCheck, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
 import { toast } from 'sonner';
 import ServiceChargeSettings from './ServiceChargeSettings';
+import DiscountManagement from './DiscountManagement';
 
 interface Supervisor {
   id: string;
@@ -287,8 +288,9 @@ const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
         )}
 
         {/* Admin Settings */}
-        <div className="mt-8">
+        <div className="mt-8 space-y-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Settings</h2>
+          <DiscountManagement />
           <ServiceChargeSettings />
         </div>
       </div>

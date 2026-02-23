@@ -20,12 +20,18 @@ export type Database = {
           discount_code: string
           discount_name: string
           discount_percent: number
+          discount_type: string
           id: string
+          id_type: string | null
           is_active: boolean
           is_vat_exempt: boolean
+          promo_code_value: string | null
           requires_customer_name: boolean
           requires_id_number: boolean
+          requires_note: boolean
+          requires_promo_code: boolean
           requires_signature: boolean
+          scope: string
           updated_at: string
         }
         Insert: {
@@ -33,12 +39,18 @@ export type Database = {
           discount_code: string
           discount_name: string
           discount_percent?: number
+          discount_type?: string
           id?: string
+          id_type?: string | null
           is_active?: boolean
           is_vat_exempt?: boolean
+          promo_code_value?: string | null
           requires_customer_name?: boolean
           requires_id_number?: boolean
+          requires_note?: boolean
+          requires_promo_code?: boolean
           requires_signature?: boolean
+          scope?: string
           updated_at?: string
         }
         Update: {
@@ -46,12 +58,18 @@ export type Database = {
           discount_code?: string
           discount_name?: string
           discount_percent?: number
+          discount_type?: string
           id?: string
+          id_type?: string | null
           is_active?: boolean
           is_vat_exempt?: boolean
+          promo_code_value?: string | null
           requires_customer_name?: boolean
           requires_id_number?: boolean
+          requires_note?: boolean
+          requires_promo_code?: boolean
           requires_signature?: boolean
+          scope?: string
           updated_at?: string
         }
         Relationships: []
