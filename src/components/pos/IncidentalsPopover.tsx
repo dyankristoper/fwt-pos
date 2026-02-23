@@ -3,11 +3,11 @@ import { MenuItem } from './types';
 import { Package } from 'lucide-react';
 
 const INCIDENTALS: MenuItem[] = [
-  { id: 'cutlery', name: 'Extra Cutlery', price: 0, category: 'sides' },
-  { id: 'tissue', name: 'Tissue', price: 0, category: 'sides' },
-  { id: 'ketchup', name: 'Ketchup', price: 0, category: 'sides' },
-  { id: 'mustard-inc', name: 'Mustard', price: 0, category: 'sides' },
-  { id: 'mayo', name: 'Mayo', price: 0, category: 'sides' },
+  { id: 'cutlery', sku_id: 'FW-MENU-INC-0001', name: 'Extra Cutlery', price: 0, category: 'sides' },
+  { id: 'tissue', sku_id: 'FW-MENU-INC-0002', name: 'Tissue', price: 0, category: 'sides' },
+  { id: 'ketchup', sku_id: 'FW-MENU-INC-0003', name: 'Ketchup', price: 0, category: 'sides' },
+  { id: 'mustard-inc', sku_id: 'FW-MENU-INC-0004', name: 'Mustard', price: 0, category: 'sides' },
+  { id: 'mayo', sku_id: 'FW-MENU-INC-0005', name: 'Mayo', price: 0, category: 'sides' },
 ];
 
 interface IncidentalsPopoverProps {

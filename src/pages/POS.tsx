@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useOrderState } from '@/components/pos/useOrderState';
 import { useDailySummary } from '@/components/pos/useDailySummary';
 import { usePrinter } from '@/components/pos/print/usePrinter';
+import { useInventoryIntegration } from '@/components/pos/useInventoryIntegration';
 import { ReceiptData } from '@/components/pos/print/escpos';
 import { calculateItemTotal } from '@/components/pos/useOrderState';
 import MenuPanel from '@/components/pos/MenuPanel';
@@ -16,7 +17,7 @@ import PrinterSettings from '@/components/pos/PrinterSettings';
 import SupervisorManagement from '@/components/pos/SupervisorManagement';
 import VoidRefundFlow from '@/components/pos/VoidRefundFlow';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder } from '@/components/pos/types';
-import { BarChart3, Printer, Shield } from 'lucide-react';
+import { BarChart3, Printer, Shield, Wifi, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
@@ -26,6 +27,7 @@ const POS = () => {
   const order = useOrderState();
   const { summary, completeOrder, addDiscount, addVoidRefund } = useDailySummary();
   const printer = usePrinter();
+  const inventory = useInventoryIntegration();
   const [view, setView] = useState<POSView>('menu');
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('sandwiches');
   const [orderNumber, setOrderNumber] = useState(1);
@@ -99,8 +101,29 @@ const POS = () => {
   }, [order, orderNumber, discountResult]);
 
   const handleCompletePayment = useCallback(
-    (method: PaymentMethod) => {
+    async (method: PaymentMethod) => {
       const finalTotal = discountResult ? discountResult.finalAmount : order.total;
+      const currentOrderId = `ORD-${String(orderNumber).padStart(4, '0')}`;
+
+      // Call inventory deduction API
+      const result = await inventory.deductInventory(
+        order.items,
+        currentOrderId,
+        method,
+        finalTotal,
+      );
+
+      if (!result.success) {
+        // Insufficient stock — block payment, allow edit
+        toast.error(result.error || 'Inventory deduction failed');
+        setView('menu');
+        return;
+      }
+
+      if (result.queued) {
+        toast.info('Order saved — inventory pending validation');
+      }
+
       completeOrder(order.items, finalTotal, method);
       toast.success(`Order #${String(orderNumber).padStart(4, '0')} completed ✓`);
 
@@ -114,7 +137,7 @@ const POS = () => {
       setDiscountResult(null);
       setView('menu');
     },
-    [order, completeOrder, orderNumber, discountResult, printer, buildReceiptData]
+    [order, completeOrder, orderNumber, discountResult, printer, buildReceiptData, inventory]
   );
 
   const handleClearOrder = useCallback(() => {
@@ -172,7 +195,18 @@ const POS = () => {
           <span className="font-display text-xs text-primary-foreground/40 hidden sm:block uppercase tracking-widest">POS</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Printer status */}
+          {/* Online/Offline indicator */}
+          <div
+            className={`h-10 px-3 rounded-lg flex items-center gap-1.5 font-display font-semibold text-xs ${
+              inventory.isOnline
+                ? 'bg-green-500/20 text-green-400'
+                : 'bg-red-500/20 text-red-400'
+            }`}
+            title={inventory.isOnline ? 'Connected to inventory' : 'Offline — orders will be queued'}
+          >
+            {inventory.isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+            {inventory.isOnline ? 'Online' : 'Offline'}
+          </div>
           <button
             onClick={() => setView(view === 'printer-settings' ? 'menu' : 'printer-settings')}
             className={`h-10 w-10 rounded-lg flex items-center justify-center active:scale-[0.97] transition-transform ${
