@@ -83,7 +83,10 @@ export function concat(...arrays: Uint8Array[]): Uint8Array {
 }
 
 export interface ReceiptData {
-  orderNumber: string;
+  storeName?: string;
+  branchName?: string;
+  orderSlipNumber?: string;
+  orderNumber?: string;
   date: string;
   time: string;
   cashier: string;
@@ -115,8 +118,9 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
   // Header (centered)
   addCmd(CMD.ALIGN_CENTER);
   addCmd(CMD.BOLD_ON);
-  addLine('FEATHERWEIGHT CHICKEN');
+  addLine(data.storeName || 'FEATHERWEIGHT CHICKEN');
   addCmd(CMD.BOLD_OFF);
+  if (data.branchName) addLine(data.branchName);
   addLine(divider());
   addLine('ORDER SLIP');
   addLine('NOT OFFICIAL RECEIPT');
@@ -124,7 +128,7 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
 
   // Transaction block (left-aligned)
   addCmd(CMD.ALIGN_LEFT);
-  addLine(formatKV('Order:', data.orderNumber));
+  addLine(formatKV('Slip #:', data.orderSlipNumber || data.orderNumber || ''));
   addLine(formatKV('Date :', data.date));
   addLine(formatKV('Time :', data.time));
   addLine(formatKV('Cash :', data.cashier));
@@ -189,12 +193,13 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
 export function buildReceiptText(data: ReceiptData): string {
   const lines: string[] = [];
 
-  lines.push(center('FEATHERWEIGHT CHICKEN'));
+  lines.push(center(data.storeName || 'FEATHERWEIGHT CHICKEN'));
+  if (data.branchName) lines.push(center(data.branchName));
   lines.push(divider());
   lines.push(center('ORDER SLIP'));
   lines.push(center('NOT OFFICIAL RECEIPT'));
   lines.push(divider());
-  lines.push(formatKV('Order:', data.orderNumber));
+  lines.push(formatKV('Slip #:', data.orderSlipNumber || data.orderNumber || ''));
   lines.push(formatKV('Date :', data.date));
   lines.push(formatKV('Time :', data.time));
   lines.push(formatKV('Cash :', data.cashier));
