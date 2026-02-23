@@ -18,35 +18,53 @@ serve(async (req) => {
     const FWTEAM_ANON_KEY = Deno.env.get("FWTEAM_ANON_KEY");
     if (!FWTEAM_ANON_KEY) throw new Error("FWTEAM_ANON_KEY is not configured");
 
-    // Fetch all active inventory items from FWTeam
-    const apiResponse = await fetch(
-      `${FWTEAM_API_URL}/rest/v1/inventory_items?is_active=eq.true&select=id,sku,item_name,category,unit_of_measure&order=item_name.asc`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${FWTEAM_ANON_KEY}`,
-          "apikey": FWTEAM_ANON_KEY,
-        },
-      }
-    );
+    const body = await req.json().catch(() => ({}));
+    const { sku_code } = body;
 
-    if (!apiResponse.ok) {
-      const errText = await apiResponse.text();
-      throw new Error(`FWTeam API error [${apiResponse.status}]: ${errText}`);
+    if (!sku_code) {
+      return new Response(
+        JSON.stringify({ valid: false, message: "sku_code is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const items = await apiResponse.json();
-
-    return new Response(JSON.stringify({ items }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Validate SKU exists via stock-check with a dummy quantity
+    const apiResponse = await fetch(`${FWTEAM_API_URL}/stock-check`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${FWTEAM_ANON_KEY}`,
+        "apikey": FWTEAM_ANON_KEY,
+      },
+      body: JSON.stringify({
+        location_id: "DEFAULT",
+        items: [{ sku_code, quantity: 0 }],
+      }),
     });
+
+    const apiData = await apiResponse.json();
+
+    // If the stock check returns successfully, the SKU exists
+    if (apiResponse.ok && apiData.status !== "FAILED") {
+      return new Response(
+        JSON.stringify({ valid: true, sku_code }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if the error indicates "SKU not found" vs other errors
+    const message = apiData?.message || apiData?.error || "Unknown";
+    const isNotFound = message.toLowerCase().includes("not found") || message.toLowerCase().includes("invalid");
+
+    return new Response(
+      JSON.stringify({ valid: !isNotFound, message, sku_code }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error: unknown) {
     console.error("sku-lookup error:", error);
     const msg = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: msg }),
+      JSON.stringify({ valid: false, error: msg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

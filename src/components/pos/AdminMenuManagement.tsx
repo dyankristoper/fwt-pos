@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Plus, Pencil, ToggleLeft, ToggleRight, Package, Loader2, Search, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, ToggleLeft, ToggleRight, Package, Loader2, Search, GripVertical, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PosCategory {
@@ -8,14 +8,6 @@ interface PosCategory {
   name: string;
   sort_order: number;
   is_active: boolean;
-}
-
-interface InventorySku {
-  id: string;
-  sku: string;
-  item_name: string;
-  category: string;
-  unit_of_measure: string;
 }
 
 interface MenuItemRow {
@@ -42,8 +34,6 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
   const [view, setView] = useState<View>('list');
   const [items, setItems] = useState<MenuItemRow[]>([]);
   const [categories, setCategories] = useState<PosCategory[]>([]);
-  const [inventorySkus, setInventorySkus] = useState<InventorySku[]>([]);
-  const [skuLoading, setSkuLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
@@ -58,6 +48,8 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
   const [formSize, setFormSize] = useState('');
   const [formCategoryId, setFormCategoryId] = useState('');
   const [formComboEligible, setFormComboEligible] = useState(false);
+  const [skuValidating, setSkuValidating] = useState(false);
+  const [skuValid, setSkuValid] = useState<boolean | null>(null);
 
   // Category form
   const [catEditId, setCatEditId] = useState<string | null>(null);
@@ -81,20 +73,6 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
     if (data) setCategories(data as unknown as PosCategory[]);
   }, []);
 
-  const fetchInventorySkus = useCallback(async () => {
-    setSkuLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('sku-lookup');
-      if (error) throw error;
-      if (data?.items) setInventorySkus(data.items);
-    } catch (err) {
-      console.error('Failed to fetch SKUs:', err);
-      toast.error('Could not load inventory SKUs from FWTeam');
-    } finally {
-      setSkuLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchItems();
     fetchCategories();
@@ -109,13 +87,10 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
     setFormSize('');
     setFormCategoryId('');
     setFormComboEligible(false);
+    setSkuValid(null);
   };
 
-  const handleAdd = () => {
-    resetForm();
-    fetchInventorySkus();
-    setView('form');
-  };
+  const handleAdd = () => { resetForm(); setView('form'); };
 
   const handleEdit = (item: MenuItemRow) => {
     setEditId(item.id);
@@ -126,48 +101,60 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
     setFormSize(item.display_size || '');
     setFormCategoryId(item.pos_category_id || '');
     setFormComboEligible(item.is_combo_eligible);
-    fetchInventorySkus();
+    setSkuValid(true); // Existing item assumed valid
     setView('form');
+  };
+
+  const validateSku = async () => {
+    if (!formSku.trim()) return;
+    setSkuValidating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sku-lookup', {
+        body: { sku_code: formSku.trim() },
+      });
+      if (error) throw error;
+      setSkuValid(data?.valid === true);
+      if (data?.valid) {
+        toast.success(`SKU ${formSku} validated ✓`);
+      } else {
+        toast.error(`SKU ${formSku} not found in FWTeam inventory`);
+      }
+    } catch {
+      toast.error('Could not validate SKU — check connectivity');
+      setSkuValid(null);
+    } finally {
+      setSkuValidating(false);
+    }
   };
 
   const handleSave = async () => {
     if (!formName.trim()) { toast.error('Item name is required'); return; }
-    if (!formSku.trim()) { toast.error('You must select an inventory SKU'); return; }
+    if (!formSku.trim()) { toast.error('SKU is required — every sellable item must have a valid SKU'); return; }
     const price = parseFloat(formPrice);
     if (isNaN(price) || price < 0) { toast.error('Enter a valid price'); return; }
     if (!formCategoryId) { toast.error('Select a category'); return; }
 
-    // Validate SKU exists in inventory
-    const skuExists = inventorySkus.some(s => s.sku === formSku);
-    if (!skuExists && inventorySkus.length > 0) {
-      toast.error('Invalid SKU — must match an inventory item from FWTeam');
+    // Block save if SKU not validated
+    if (skuValid === false) {
+      toast.error('Cannot save — SKU is invalid. No SKU → No Sale.');
       return;
     }
 
     // Check for duplicate SKU mapping (1:1 policy)
-    if (!editId) {
-      const existing = items.find(i => i.sku === formSku);
-      if (existing) {
-        toast.error(`SKU ${formSku} is already mapped to "${existing.product_name}"`);
-        return;
-      }
-    } else {
-      const existing = items.find(i => i.sku === formSku && i.id !== editId);
-      if (existing) {
-        toast.error(`SKU ${formSku} is already mapped to "${existing.product_name}"`);
-        return;
-      }
+    const existing = items.find(i => i.sku === formSku.trim() && i.id !== editId);
+    if (existing) {
+      toast.error(`SKU ${formSku} is already mapped to "${existing.product_name}"`);
+      return;
     }
 
     setSaving(true);
     try {
-      // Determine the DB enum category from pos_category name
       const cat = categories.find(c => c.id === formCategoryId);
       const enumCategory = mapToDbEnum(cat?.name || 'Sides and Add-Ons');
 
       const payload: any = {
         product_name: formName.trim(),
-        sku: formSku,
+        sku: formSku.trim(),
         srp: price,
         kcal: formKcal ? parseInt(formKcal) : null,
         display_size: formSize.trim() || null,
@@ -223,7 +210,6 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
     fetchCategories();
   };
 
-  // Filter items
   const filtered = items.filter(i => {
     if (searchFilter && !i.product_name.toLowerCase().includes(searchFilter.toLowerCase()) && !i.sku.toLowerCase().includes(searchFilter.toLowerCase())) return false;
     if (categoryFilter !== 'all' && i.pos_category_id !== categoryFilter) return false;
@@ -254,30 +240,44 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
                 className={inputClass} placeholder="Classic Chicken Sandwich" autoFocus />
             </div>
 
-            {/* SKU Dropdown from FWTeam */}
+            {/* SKU with validation */}
             <div>
               <label className={labelClass}>Inventory SKU (FWTeam) *</label>
-              {skuLoading ? (
-                <div className="flex items-center gap-2 mt-1 text-foreground/50 text-sm">
-                  <Loader2 size={14} className="animate-spin" /> Loading SKUs...
-                </div>
-              ) : (
-                <select
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
                   value={formSku}
-                  onChange={e => setFormSku(e.target.value)}
-                  className={`${inputClass} appearance-none`}
+                  onChange={e => { setFormSku(e.target.value); setSkuValid(null); }}
+                  maxLength={50}
+                  className={`flex-1 h-11 px-3 bg-background border-2 rounded-lg font-display text-sm text-foreground focus:outline-none transition-colors ${
+                    skuValid === true ? 'border-green-500/50' : skuValid === false ? 'border-accent' : 'border-foreground/10 focus:border-accent'
+                  }`}
+                  placeholder="FW-MENU-SAN-0001"
+                />
+                <button
+                  onClick={validateSku}
+                  disabled={!formSku.trim() || skuValidating}
+                  className="h-11 px-4 bg-foreground/10 text-foreground rounded-lg font-display font-semibold text-xs active:scale-[0.97] disabled:opacity-30 flex items-center gap-1.5"
                 >
-                  <option value="">— Select SKU —</option>
-                  {inventorySkus.map(s => (
-                    <option key={s.id} value={s.sku}>
-                      {s.sku} — {s.item_name} ({s.category}, {s.unit_of_measure})
-                    </option>
-                  ))}
-                </select>
-              )}
-              {formSku && (
-                <p className="text-xs text-foreground/40 mt-1">Selected: <span className="font-display font-bold">{formSku}</span></p>
-              )}
+                  {skuValidating ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                  Validate
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                {skuValid === true && (
+                  <span className="flex items-center gap-1 text-green-500 text-xs font-display font-semibold">
+                    <CheckCircle size={12} /> Valid SKU
+                  </span>
+                )}
+                {skuValid === false && (
+                  <span className="flex items-center gap-1 text-accent text-xs font-display font-semibold">
+                    <XCircle size={12} /> SKU not found — No SKU → No Sale
+                  </span>
+                )}
+                {skuValid === null && formSku && (
+                  <span className="text-foreground/40 text-[10px]">Click Validate to check SKU against FWTeam</span>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -319,7 +319,7 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
             </div>
           </div>
 
-          <button onClick={handleSave} disabled={saving || !formName.trim() || !formSku || !formPrice}
+          <button onClick={handleSave} disabled={saving || !formName.trim() || !formSku.trim() || !formPrice || skuValid === false}
             className="w-full mt-5 h-14 bg-pos-gold text-primary rounded-xl font-display font-bold text-lg active:scale-[0.97] transition-transform disabled:opacity-30">
             {saving ? 'Saving...' : editId ? 'Save Changes' : 'Create Item'}
           </button>
@@ -340,7 +340,6 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
             <h1 className="font-display text-2xl font-bold text-foreground">Categories</h1>
           </div>
 
-          {/* Add/Edit form */}
           <div className="bg-card rounded-xl border-2 border-foreground/10 p-4 mb-4 space-y-3">
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
@@ -417,7 +416,6 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="flex gap-2 mb-4">
           <div className="flex-1 relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/30" />
@@ -487,7 +485,6 @@ const AdminMenuManagement = ({ onBack }: AdminMenuManagementProps) => {
   );
 };
 
-// Map POS category name → DB enum value
 function mapToDbEnum(catName: string): string {
   const map: Record<string, string> = {
     'Signature Sandwiches': 'Signature Sandwiches',
