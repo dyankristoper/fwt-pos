@@ -33,7 +33,7 @@ serve(async (req) => {
       );
     }
 
-    // Idempotency check: return cached result if transaction already processed
+    // Idempotency check
     const { data: existing } = await supabase
       .from("pos_transactions")
       .select("*")
@@ -47,20 +47,16 @@ serve(async (req) => {
       );
     }
 
-    // Record transaction as PENDING
+    // Record as PENDING
     if (!existing) {
       await supabase.from("pos_transactions").insert({
-        transaction_id,
-        order_id,
-        location_id,
+        transaction_id, order_id, location_id,
         actual_date: actual_date || new Date().toISOString().slice(0, 10),
-        items,
-        user_id,
-        status: "PENDING",
+        items, user_id, status: "PENDING",
       });
     }
 
-    // Forward to FWTeam App's deduct-inventory edge function
+    // Forward to FWTeam App
     const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/deduct-inventory`, {
       method: "POST",
       headers: {
@@ -73,13 +69,8 @@ serve(async (req) => {
 
     const apiData = await apiResponse.json();
 
-    // Update transaction record with result
-    await supabase
-      .from("pos_transactions")
-      .update({
-        status: apiData.status || (apiResponse.ok ? "SUCCESS" : "FAILED"),
-        api_response: apiData,
-      })
+    await supabase.from("pos_transactions")
+      .update({ status: apiData.status || (apiResponse.ok ? "SUCCESS" : "FAILED"), api_response: apiData })
       .eq("transaction_id", transaction_id);
 
     return new Response(JSON.stringify(apiData), {

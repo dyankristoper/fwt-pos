@@ -28,7 +28,6 @@ serve(async (req) => {
       );
     }
 
-    // Forward to FWTeam App's stock-check edge function
     const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/stock-check`, {
       method: "POST",
       headers: {
