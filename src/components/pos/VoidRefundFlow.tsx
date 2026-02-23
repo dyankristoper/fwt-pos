@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, AlertTriangle, RotateCcw, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { CompletedOrder } from './types';
+import { CompletedOrder, OrderItem } from './types';
 import { calculateItemTotal } from './useOrderState';
 
 interface VoidRefundFlowProps {
@@ -22,6 +22,21 @@ const VOID_REASONS = [
   'System error',
   'Other',
 ];
+
+function buildDeductionItemsFromOrder(items: OrderItem[]): { sku_code: string; quantity: number }[] {
+  const skuMap = new Map<string, number>();
+  for (const item of items) {
+    const sku = item.menuItem.sku_code;
+    if (sku) skuMap.set(sku, (skuMap.get(sku) || 0) + item.quantity);
+    if (item.isCombo && item.comboDrink?.sku_code) {
+      skuMap.set(item.comboDrink.sku_code, (skuMap.get(item.comboDrink.sku_code) || 0) + item.quantity);
+    }
+    for (const addon of item.addOns) {
+      if (addon.sku_code) skuMap.set(addon.sku_code, (skuMap.get(addon.sku_code) || 0) + item.quantity);
+    }
+  }
+  return Array.from(skuMap.entries()).map(([sku_code, quantity]) => ({ sku_code, quantity }));
+}
 
 const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) => {
   const [step, setStep] = useState<Step>('select');
@@ -92,6 +107,26 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
         approved_by: approverName,
         processed_by: 'CASHIER',
       });
+
+      // Reverse inventory via pos-refund edge function
+      const deductionItems = buildDeductionItemsFromOrder(order.items);
+      if (deductionItems.length > 0) {
+        const { error } = await supabase.functions.invoke('pos-refund', {
+          body: {
+            original_order_id: order.id,
+            refund_type: actionType,
+            location_id: 'DEFAULT',
+            items: deductionItems,
+            reason: finalReason,
+            approved_by: approverName,
+            user_id: 'POS',
+          },
+        });
+        if (error) {
+          console.error('Inventory reversal failed:', error);
+          toast.warning('Sale reversed but inventory reversal queued for retry');
+        }
+      }
 
       toast.success(
         actionType === 'void'
