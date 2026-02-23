@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -7,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -26,9 +25,9 @@ serve(async (req) => {
     const body = await req.json();
     const {
       original_order_id,
-      refund_type, // 'void' | 'refund'
+      refund_type,
       location_id,
-      items, // array of { sku_code, quantity }
+      items,
       reason,
       approved_by,
       user_id,
@@ -43,7 +42,6 @@ serve(async (req) => {
 
     const transaction_id = crypto.randomUUID();
 
-    // Record the reversal attempt
     await supabase.from("pos_transactions").insert({
       transaction_id,
       order_id: `${refund_type.toUpperCase()}-${original_order_id}`,
@@ -54,7 +52,6 @@ serve(async (req) => {
       status: "PENDING",
     });
 
-    // Forward to FWTeam App — reverse inventory
     const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/refund-inventory`, {
       method: "POST",
       headers: {

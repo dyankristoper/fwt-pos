@@ -1,12 +1,10 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,7 +26,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate SKU exists via stock-check with a dummy quantity
     const apiResponse = await fetch(`${FWTEAM_API_URL}/stock-check`, {
       method: "POST",
       headers: {
@@ -44,7 +41,6 @@ serve(async (req) => {
 
     const apiData = await apiResponse.json();
 
-    // If the stock check returns successfully, the SKU exists
     if (apiResponse.ok && apiData.status !== "FAILED") {
       return new Response(
         JSON.stringify({ valid: true, sku_code }),
@@ -52,7 +48,6 @@ serve(async (req) => {
       );
     }
 
-    // Check if the error indicates "SKU not found" vs other errors
     const message = apiData?.message || apiData?.error || "Unknown";
     const isNotFound = message.toLowerCase().includes("not found") || message.toLowerCase().includes("invalid");
 
