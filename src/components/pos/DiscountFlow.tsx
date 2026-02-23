@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 const VAT_RATE = 0.12;
 
-export type DiscountType = 'SC' | 'PWD' | 'PROMO' | 'EMP';
+export type DiscountType = 'SC' | 'PWD' | 'PROMO' | 'EMP' | 'NATL_ATH';
 
 export interface DiscountResult {
   discountType: DiscountType;
@@ -76,6 +76,8 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
     setDiscountType(type);
     if (type === 'SC' || type === 'PWD') {
       setStep('info');
+    } else if (type === 'NATL_ATH') {
+      setStep('info');
     } else {
       setStep('promo-config');
     }
@@ -86,7 +88,11 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
       toast.error('Customer name and ID number are required');
       return;
     }
-    setStep('pin');
+    if (discountType === 'NATL_ATH') {
+      setStep('promo-config');
+    } else {
+      setStep('pin');
+    }
   };
 
   const handlePromoConfigSubmit = () => {
@@ -177,7 +183,7 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
   };
 
   const copyManualOR = () => {
-    const label = discountType === 'SC' ? 'SC' : discountType === 'PWD' ? 'PWD' : discountType === 'EMP' ? 'Employee' : 'Promo';
+    const label = discountType === 'SC' ? 'SC' : discountType === 'PWD' ? 'PWD' : discountType === 'EMP' ? 'Employee' : discountType === 'NATL_ATH' ? 'National Athlete' : 'Promo';
     const text = isVatExempt
       ? `VAT-Exempt Sale: ₱${computation.finalAmount.toFixed(2)}\nLess ${label} Discount: ₱${computation.discountAmount.toFixed(2)}`
       : `Sale: ₱${total.toFixed(2)}\nLess ${label} Discount (${effectivePercent}%): ₱${computation.discountAmount.toFixed(2)}\nFinal: ₱${computation.finalAmount.toFixed(2)}`;
@@ -191,6 +197,7 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
       case 'PWD': return 'PWD';
       case 'PROMO': return 'Promotional';
       case 'EMP': return 'Employee';
+      case 'NATL_ATH': return 'National Athlete';
       default: return '';
     }
   };
@@ -227,6 +234,10 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
 
           <p className="font-display text-xs text-muted-foreground uppercase tracking-wide mb-2">Non-Statutory</p>
           <div className="space-y-2">
+            <button onClick={() => handleSelectType('NATL_ATH')} className="w-full h-14 bg-foreground/10 text-foreground rounded-xl font-display font-bold text-base active:scale-[0.97] transition-transform flex items-center justify-center gap-2 border border-foreground/10">
+              <ShieldCheck size={18} />
+              National Athlete Discount
+            </button>
             <button onClick={() => handleSelectType('PROMO')} className="w-full h-14 bg-foreground/10 text-foreground rounded-xl font-display font-bold text-base active:scale-[0.97] transition-transform flex items-center justify-center gap-2 border border-foreground/10">
               <Tag size={18} />
               Promotional Discount
@@ -292,7 +303,7 @@ const DiscountFlow = ({ total, saleId, onApplyDiscount, onCancel }: DiscountFlow
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
         <div className="bg-card rounded-2xl p-8 shadow-2xl max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-2 mb-6">
-            <button onClick={() => { setStep('select'); setPromoPercent(''); setCustomerName(''); }} className="text-foreground/40 active:text-foreground p-1"><ArrowLeft size={20} /></button>
+            <button onClick={() => { if (discountType === 'NATL_ATH') { setStep('info'); setPromoPercent(''); } else { setStep('select'); setPromoPercent(''); setCustomerName(''); } }} className="text-foreground/40 active:text-foreground p-1"><ArrowLeft size={20} /></button>
             <h2 className="font-display text-xl font-bold text-foreground">{label} Discount</h2>
           </div>
 
