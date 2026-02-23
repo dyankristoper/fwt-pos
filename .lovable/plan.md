@@ -1,53 +1,38 @@
 
 
-# Fix: Inventory Integration Retry Loop
+# Fix: Apply 404-to-502 remapping to pos-refund edge function
 
 ## Problem
 
-The POS retry queue keeps sending the same `transaction_id` for failed transactions, but the edge function's idempotency check treats FAILED records as final — it returns the cached error response (409) without re-attempting the FWTeam API call. This creates an infinite retry loop that never actually retries.
-
-## Root Cause
-
-In `pos-deduct/index.ts` (line 42):
-```
-if (existing && existing.status !== "PENDING") {
-  // Returns cached response for FAILED — never re-calls FWTeam API
-}
-```
-
-The client retry queue (`useInventoryIntegration.ts`) reuses the same `transaction_id`, so every retry hits this check and gets the old 404 error back.
+The `pos-refund` edge function forwards the upstream FWTeam API's HTTP status directly to the client. When the FWTeam `refund-inventory` endpoint returns 404 (not deployed yet), the POS client receives a raw 404 — which looks like the `pos-refund` function itself is missing, rather than signaling a downstream API failure.
 
 ## Solution
 
-### 1. Edge Function: Allow retrying FAILED transactions (`pos-deduct/index.ts`)
-
-- Modify the idempotency check to only short-circuit for `SUCCESS` status
-- For `FAILED` status, reset to `PENDING` and re-attempt the FWTeam API call
-- This way, when the FWTeam API is back up, retries will succeed
-
-### 2. Client: Add retry limit (`useInventoryIntegration.ts`)
-
-- Cap retries at 10 attempts to prevent infinite loops
-- Mark transactions as `FAILED` after exceeding the limit
-- Show a toast notification when max retries are reached
-
-### 3. Database Cleanup
-
-- Clear the stuck pending transaction (`3b25b994...`) that has been retrying 14+ times
-- Clear old FAILED records from `pos_transactions` that were from previous gateway outages
+Apply the same fix already in `pos-deduct`: remap upstream 404 to 502 Bad Gateway and include `upstream_status` in the response body.
 
 ## Technical Details
 
-**`supabase/functions/pos-deduct/index.ts`** changes:
-- Change idempotency check: only return cached response for `SUCCESS` status
-- For `FAILED` records: update status back to `PENDING` and proceed with API call
+**File: `supabase/functions/pos-refund/index.ts`**
 
-**`src/components/pos/useInventoryIntegration.ts`** changes:
-- In `retryPendingTransactions`, skip items with `retry_count >= 10`
-- Update those items to `status: 'FAILED'` with appropriate error message
-- Add toast for max retry exceeded
+Change the final response block (currently around line 79-82) from:
 
-**Database cleanup:**
-- Set `pending_transactions` record `3b25b994...` to `FAILED`
-- Delete old test records from `pos_transactions`
+```ts
+return new Response(JSON.stringify(apiData), {
+  status: apiResponse.status,
+  headers: { ...corsHeaders, "Content-Type": "application/json" },
+});
+```
+
+To:
+
+```ts
+const clientStatus = apiResponse.status === 404 ? 502 : apiResponse.status;
+
+return new Response(JSON.stringify({ ...apiData, upstream_status: apiResponse.status }), {
+  status: clientStatus,
+  headers: { ...corsHeaders, "Content-Type": "application/json" },
+});
+```
+
+This is a 2-line change mirroring exactly what was done in `pos-deduct`. The function will be redeployed automatically.
 
