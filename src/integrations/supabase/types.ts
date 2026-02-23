@@ -270,6 +270,7 @@ export type Database = {
           branch_id: string | null
           category: Database["public"]["Enums"]["menu_category"]
           central_kitchen_flag: boolean | null
+          combo_sku: string | null
           computed_food_cost: number
           created_at: string
           display_size: string | null
@@ -293,6 +294,7 @@ export type Database = {
           branch_id?: string | null
           category: Database["public"]["Enums"]["menu_category"]
           central_kitchen_flag?: boolean | null
+          combo_sku?: string | null
           computed_food_cost?: number
           created_at?: string
           display_size?: string | null
@@ -316,6 +318,7 @@ export type Database = {
           branch_id?: string | null
           category?: Database["public"]["Enums"]["menu_category"]
           central_kitchen_flag?: boolean | null
+          combo_sku?: string | null
           computed_food_cost?: number
           created_at?: string
           display_size?: string | null
