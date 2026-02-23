@@ -89,7 +89,7 @@ const DailySummary = ({ summary, onBack, onVoidRefund, onZReading }: DailySummar
                 .reverse()
                 .map(order => (
                   <div key={order.id} className="grid grid-cols-5 gap-4 p-4 border-t border-foreground/5 items-center">
-                    <span className="font-display font-bold text-sm">{order.id}</span>
+                    <span className="font-display font-bold text-sm">{order.orderSlipNumber}</span>
                     <span className="text-foreground/60 text-sm">
                       {order.timestamp.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
                     </span>
