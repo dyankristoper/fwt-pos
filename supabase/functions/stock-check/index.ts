@@ -13,9 +13,10 @@ serve(async (req) => {
 
   try {
     const FWTEAM_API_URL = Deno.env.get("FWTEAM_API_URL");
-    if (!FWTEAM_API_URL) {
-      throw new Error("FWTEAM_API_URL is not configured");
-    }
+    if (!FWTEAM_API_URL) throw new Error("FWTEAM_API_URL is not configured");
+
+    const FWTEAM_ANON_KEY = Deno.env.get("FWTEAM_ANON_KEY");
+    if (!FWTEAM_ANON_KEY) throw new Error("FWTEAM_ANON_KEY is not configured");
 
     const body = await req.json();
     const { location_id, items } = body;
@@ -27,9 +28,14 @@ serve(async (req) => {
       );
     }
 
-    const apiResponse = await fetch(`${FWTEAM_API_URL}/api/inventory/stock-check`, {
+    // Forward to FWTeam App's stock-check edge function
+    const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/stock-check`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${FWTEAM_ANON_KEY}`,
+        "apikey": FWTEAM_ANON_KEY,
+      },
       body: JSON.stringify({ location_id, items }),
     });
 

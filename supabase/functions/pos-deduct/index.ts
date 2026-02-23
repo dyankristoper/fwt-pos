@@ -14,9 +14,10 @@ serve(async (req) => {
 
   try {
     const FWTEAM_API_URL = Deno.env.get("FWTEAM_API_URL");
-    if (!FWTEAM_API_URL) {
-      throw new Error("FWTEAM_API_URL is not configured");
-    }
+    if (!FWTEAM_API_URL) throw new Error("FWTEAM_API_URL is not configured");
+
+    const FWTEAM_ANON_KEY = Deno.env.get("FWTEAM_ANON_KEY");
+    if (!FWTEAM_ANON_KEY) throw new Error("FWTEAM_ANON_KEY is not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -59,10 +60,14 @@ serve(async (req) => {
       });
     }
 
-    // Forward to FWTeam App
-    const apiResponse = await fetch(`${FWTEAM_API_URL}/api/inventory/pos-deduct`, {
+    // Forward to FWTeam App's deduct-inventory edge function
+    const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/deduct-inventory`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${FWTEAM_ANON_KEY}`,
+        "apikey": FWTEAM_ANON_KEY,
+      },
       body: JSON.stringify({ transaction_id, order_id, location_id, actual_date, items, user_id, timestamp }),
     });
 
