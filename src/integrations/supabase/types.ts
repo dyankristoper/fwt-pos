@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      completed_sales: {
+        Row: {
+          branch_code: string
+          cashier_name: string | null
+          control_number: number
+          created_at: string
+          discount_total: number | null
+          gross_sales: number
+          id: string
+          line_discounts: Json
+          net_sales: number
+          order_items: Json
+          order_slip_number: string
+          payment_method: string
+          service_charge_amount: number | null
+          service_charge_percent: number | null
+          subtotal: number
+          total_amount_due: number
+          transaction_id: string | null
+          vat_amount: number | null
+          vat_exempt_sales: number | null
+          vatable_sales: number | null
+          zero_rated_sales: number | null
+        }
+        Insert: {
+          branch_code?: string
+          cashier_name?: string | null
+          control_number: number
+          created_at?: string
+          discount_total?: number | null
+          gross_sales?: number
+          id?: string
+          line_discounts?: Json
+          net_sales?: number
+          order_items?: Json
+          order_slip_number: string
+          payment_method: string
+          service_charge_amount?: number | null
+          service_charge_percent?: number | null
+          subtotal?: number
+          total_amount_due?: number
+          transaction_id?: string | null
+          vat_amount?: number | null
+          vat_exempt_sales?: number | null
+          vatable_sales?: number | null
+          zero_rated_sales?: number | null
+        }
+        Update: {
+          branch_code?: string
+          cashier_name?: string | null
+          control_number?: number
+          created_at?: string
+          discount_total?: number | null
+          gross_sales?: number
+          id?: string
+          line_discounts?: Json
+          net_sales?: number
+          order_items?: Json
+          order_slip_number?: string
+          payment_method?: string
+          service_charge_amount?: number | null
+          service_charge_percent?: number | null
+          subtotal?: number
+          total_amount_due?: number
+          transaction_id?: string | null
+          vat_amount?: number | null
+          vat_exempt_sales?: number | null
+          vatable_sales?: number | null
+          zero_rated_sales?: number | null
+        }
+        Relationships: []
+      }
       discount_types: {
         Row: {
           created_at: string
@@ -567,6 +639,11 @@ export type Database = {
       }
       menu_category_code: {
         Args: { cat: Database["public"]["Enums"]["menu_category"] }
+        Returns: string
+      }
+      next_control_number: { Args: never; Returns: number }
+      next_order_slip_number: {
+        Args: { p_branch_code: string }
         Returns: string
       }
     }

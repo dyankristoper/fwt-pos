@@ -43,7 +43,7 @@ const OrderPanel = ({
       <div className="p-4 shrink-0 bg-primary">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-primary-foreground">
-            Order #{String(orderNumber).padStart(4, '0')}
+            New Order
           </h2>
           <div className="flex items-center gap-2">
             <span className="bg-primary-foreground/15 text-primary-foreground/70 text-xs font-display font-semibold px-2 py-1 rounded-md">

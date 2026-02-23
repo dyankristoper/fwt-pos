@@ -1,11 +1,16 @@
-import { useState, useCallback } from 'react';
-import { useOrderState } from '@/components/pos/useOrderState';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useOrderState, calculateItemFinal, calculateItemDiscount } from '@/components/pos/useOrderState';
 import { useDailySummary } from '@/components/pos/useDailySummary';
 import { usePrinter } from '@/components/pos/print/usePrinter';
 import { useInventoryIntegration } from '@/components/pos/useInventoryIntegration';
 import { useServiceCharge } from '@/components/pos/useServiceCharge';
 import { ReceiptData } from '@/components/pos/print/escpos';
-import { calculateItemFinal, calculateItemDiscount } from '@/components/pos/useOrderState';
+import {
+  fetchBranchConfig, fetchVatMode, generateOrderSlipNumber,
+  generateControlNumber, calculateVatBreakdown, saveSale,
+  BranchConfig, VatBreakdown,
+} from '@/components/pos/useSalesEngine';
+import { downloadInvoice, InvoiceData } from '@/components/pos/generateInvoice';
 import MenuPanel from '@/components/pos/MenuPanel';
 import OrderPanel from '@/components/pos/OrderPanel';
 import ComboPrompt from '@/components/pos/ComboPrompt';
@@ -17,12 +22,13 @@ import PrinterSettings from '@/components/pos/PrinterSettings';
 import SupervisorManagement from '@/components/pos/SupervisorManagement';
 import VoidRefundFlow from '@/components/pos/VoidRefundFlow';
 import ItemDiscountFlow from '@/components/pos/ItemDiscountFlow';
+import PrePaymentModal from '@/components/pos/PrePaymentModal';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
 import { BarChart3, Printer, Shield, Wifi, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
-type POSView = 'menu' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors';
+type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors';
 
 const POS = () => {
   const order = useOrderState();
@@ -32,19 +38,29 @@ const POS = () => {
   const serviceCharge = useServiceCharge();
   const [view, setView] = useState<POSView>('menu');
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('sandwiches');
-  const [orderNumber, setOrderNumber] = useState(1);
   const [addOnPromptItemId, setAddOnPromptItemId] = useState<string | null>(null);
   const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null>(null);
   const [itemDiscountTarget, setItemDiscountTarget] = useState<OrderItem | null>(null);
 
-  const saleId = `ORD-${String(orderNumber).padStart(4, '0')}`;
+  // Branch config + VAT mode loaded on mount
+  const [branchConfig, setBranchConfig] = useState<BranchConfig | null>(null);
+  const [vatMode, setVatMode] = useState<'inclusive' | 'exclusive'>('inclusive');
+  const loadedRef = useRef(false);
 
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    (async () => {
+      const [bc, vm] = await Promise.all([fetchBranchConfig(), fetchVatMode()]);
+      setBranchConfig(bc);
+      setVatMode(vm);
+    })();
+  }, []);
+
+  // Combo / add-on flow
   const handleComboAccept = useCallback(() => {
     const itemId = order.pendingComboItem?.instanceId;
-    if (itemId) {
-      order.makeCombo(itemId);
-      setAddOnPromptItemId(itemId);
-    }
+    if (itemId) { order.makeCombo(itemId); setAddOnPromptItemId(itemId); }
   }, [order]);
 
   const handleComboDecline = useCallback(() => {
@@ -60,57 +76,36 @@ const POS = () => {
   const handleAddOnDone = useCallback(() => setAddOnPromptItemId(null), []);
 
   const addOnPromptItem = addOnPromptItemId
-    ? order.items.find(i => i.instanceId === addOnPromptItemId)
-    : null;
+    ? order.items.find(i => i.instanceId === addOnPromptItemId) : null;
 
+  // Calculated totals
+  const scAmount = serviceCharge.calculateServiceCharge(order.total);
+  const vatBreakdown = calculateVatBreakdown(order.items, scAmount, vatMode);
+  const payableTotal = vatBreakdown.totalAmountDue;
+
+  // Phase 4: Pre-payment modal → payment
   const handleProceedToPayment = useCallback(() => {
     if (order.items.length === 0) return;
-    setView('payment');
+    setView('pre-payment');
   }, [order.items.length]);
 
-  const scAmount = serviceCharge.calculateServiceCharge(order.total);
-  const payableTotal = order.total + scAmount;
+  const handleContinueToPayment = useCallback(() => setView('payment'), []);
+  const handleEditOrder = useCallback(() => setView('menu'), []);
 
-  const buildReceiptData = useCallback((method: PaymentMethod): ReceiptData => {
-    const now = new Date();
-    return {
-      orderNumber: `OS-${String(orderNumber).padStart(6, '0')}`,
-      date: now.toISOString().slice(0, 10),
-      time: now.toTimeString().slice(0, 5),
-      cashier: 'ANA',
-      items: order.items.map(item => {
-        const discAmt = calculateItemDiscount(item);
-        return {
-          qty: item.quantity,
-          name: item.menuItem.name,
-          amount: calculateItemFinal(item),
-          discountLabel: item.discount ? `${item.discount.discount_name || item.discount.reason} -₱${discAmt.toFixed(2)}` : undefined,
-          idNumber: item.discount?.id_number,
-        };
-      }),
-      subtotal: order.total,
-      serviceCharge: serviceCharge.config.enabled ? {
-        percent: serviceCharge.config.percent,
-        amount: scAmount,
-      } : undefined,
-      total: payableTotal,
-      paymentMethod: method,
-    };
-  }, [order, orderNumber, serviceCharge, scAmount, payableTotal]);
-
+  // Phase 6: Post-payment automation
   const handleCompletePayment = useCallback(
     async (method: PaymentMethod) => {
-      const currentOrderId = `ORD-${String(orderNumber).padStart(4, '0')}`;
+      if (!branchConfig) {
+        toast.error('Branch config not loaded');
+        return;
+      }
 
-      const result = await inventory.deductInventory(
-        order.items,
-        currentOrderId,
-        method,
-        payableTotal,
-      );
+      // 1. Inventory deduction
+      const txId = `TXN-${Date.now()}`;
+      const result = await inventory.deductInventory(order.items, txId, method, payableTotal);
 
       if (!result.success) {
-        toast.error(result.error || 'Inventory deduction failed');
+        toast.error(result.error || 'Inventory deduction failed — cannot complete sale');
         setView('menu');
         return;
       }
@@ -119,19 +114,106 @@ const POS = () => {
         toast.info('Order saved — inventory pending validation');
       }
 
-      completeOrder(order.items, payableTotal, method);
-      toast.success(`Order #${String(orderNumber).padStart(4, '0')} completed ✓`);
+      // 2. Generate order slip number + control number
+      let orderSlipNumber: string;
+      let controlNumber: number;
+      try {
+        [orderSlipNumber, controlNumber] = await Promise.all([
+          generateOrderSlipNumber(branchConfig.code),
+          generateControlNumber(),
+        ]);
+      } catch (err) {
+        toast.error('Failed to generate order/control numbers');
+        console.error(err);
+        // Still proceed, use fallback
+        const now = new Date();
+        const dateStr = `${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getFullYear()).slice(-2)}`;
+        orderSlipNumber = `${dateStr}-0000-${branchConfig.code}`;
+        controlNumber = 0;
+      }
 
-      if (printer.settings.autoPrint || printer.status.connected) {
-        const receiptData = buildReceiptData(method);
+      // 3. Save to completed_sales
+      try {
+        await saveSale({
+          orderSlipNumber,
+          controlNumber,
+          items: order.items,
+          vatBreakdown,
+          paymentMethod: method,
+          cashierName: 'ANA',
+          branchCode: branchConfig.code,
+          serviceChargePercent: serviceCharge.config.percent,
+          transactionId: txId,
+        });
+      } catch (err) {
+        console.error('Failed to save sale:', err);
+        toast.error('Sale record failed to save');
+      }
+
+      // Track in daily summary
+      completeOrder(order.items, payableTotal, method);
+      toast.success(`Order ${orderSlipNumber} completed ✓`);
+
+      // 4. Print 3 copies of Order Slip
+      const now = new Date();
+      const receiptData: ReceiptData = {
+        storeName: branchConfig.legal_name,
+        branchName: branchConfig.name,
+        orderSlipNumber,
+        date: now.toISOString().slice(0, 10),
+        time: now.toTimeString().slice(0, 5),
+        cashier: 'ANA',
+        items: order.items.map(item => {
+          const discAmt = calculateItemDiscount(item);
+          return {
+            qty: item.quantity,
+            name: item.menuItem.name,
+            amount: calculateItemFinal(item),
+            discountLabel: item.discount
+              ? `${item.discount.discount_name || item.discount.reason} -₱${discAmt.toFixed(2)}`
+              : undefined,
+            idNumber: item.discount?.id_number,
+          };
+        }),
+        subtotal: order.total,
+        serviceCharge: serviceCharge.config.enabled ? {
+          percent: serviceCharge.config.percent,
+          amount: scAmount,
+        } : undefined,
+        total: payableTotal,
+        paymentMethod: method,
+      };
+
+      // Print 3 copies
+      for (let i = 0; i < 3; i++) {
         printer.printReceipt(receiptData);
       }
 
+      // 5. Generate Sales Invoice PDF (save locally, don't print)
+      try {
+        const invoiceData: InvoiceData = {
+          branchConfig,
+          orderSlipNumber,
+          controlNumber,
+          date: now.toISOString().slice(0, 10),
+          time: now.toTimeString().slice(0, 5),
+          cashier: 'ANA',
+          items: order.items,
+          vatBreakdown,
+          serviceChargePercent: serviceCharge.config.percent,
+          paymentMethod: method,
+        };
+        downloadInvoice(invoiceData);
+      } catch (err) {
+        console.error('Invoice generation failed:', err);
+        toast.error('Invoice PDF generation failed');
+      }
+
+      // 6. Clear and reset
       order.clearOrder();
-      setOrderNumber(prev => prev + 1);
       setView('menu');
     },
-    [order, completeOrder, orderNumber, printer, buildReceiptData, inventory, payableTotal]
+    [order, completeOrder, printer, inventory, branchConfig, vatBreakdown, payableTotal, serviceCharge, scAmount]
   );
 
   const handleClearOrder = useCallback(() => {
@@ -154,14 +236,12 @@ const POS = () => {
     setVoidRefundOrder(null);
   }, [addVoidRefund]);
 
-  const handleItemDiscount = useCallback((item: OrderItem) => {
-    setItemDiscountTarget(item);
-  }, []);
+  const handleItemDiscount = useCallback((item: OrderItem) => { setItemDiscountTarget(item); }, []);
 
   const handleApplyItemDiscount = useCallback((instanceId: string, discount: ItemDiscount) => {
     order.applyItemDiscount(instanceId, discount);
     setItemDiscountTarget(null);
-    toast.success(`${discount.discount_name || 'Discount'} applied to ${order.items.find(i => i.instanceId === instanceId)?.menuItem.name}`);
+    toast.success(`${discount.discount_name || 'Discount'} applied`);
   }, [order]);
 
   const handleRemoveItemDiscount = useCallback((instanceId: string) => {
@@ -169,6 +249,9 @@ const POS = () => {
     setItemDiscountTarget(null);
     toast.success('Item discount removed');
   }, [order]);
+
+  const scData = serviceCharge.config.enabled
+    ? { enabled: true, percent: serviceCharge.config.percent, amount: scAmount } : undefined;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background touch-manipulation select-none" onContextMenu={e => e.preventDefault()}>
@@ -184,7 +267,6 @@ const POS = () => {
             className={`h-10 px-3 rounded-lg flex items-center gap-1.5 font-display font-semibold text-xs ${
               inventory.isOnline ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
             }`}
-            title={inventory.isOnline ? 'Connected to inventory' : 'Offline — orders will be queued'}
           >
             {inventory.isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
             {inventory.isOnline ? 'Online' : 'Offline'}
@@ -194,14 +276,12 @@ const POS = () => {
             className={`h-10 w-10 rounded-lg flex items-center justify-center active:scale-[0.97] transition-transform ${
               printer.status.connected ? 'bg-pos-gold/20 text-pos-gold' : 'bg-primary-foreground/10 text-primary-foreground/40'
             }`}
-            title={printer.status.connected ? `Printer: ${printer.status.deviceName}` : 'Printer disconnected'}
           >
             <Printer size={18} />
           </button>
           <button
             onClick={() => setView(view === 'supervisors' ? 'menu' : 'supervisors')}
             className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
-            title="Supervisor Management"
           >
             <Shield size={18} />
           </button>
@@ -230,15 +310,19 @@ const POS = () => {
       ) : (
         <div className="flex-1 flex overflow-hidden">
           <div className="w-[65%] overflow-y-auto bg-background">
-            {view === 'menu' && <MenuPanel activeCategory={activeCategory} onCategoryChange={setActiveCategory} onItemTap={order.addItem} />}
-            {view === 'payment' && <PaymentFlow total={payableTotal} onComplete={handleCompletePayment} onCancel={handleCancelPayment} />}
+            {(view === 'menu' || view === 'pre-payment') && (
+              <MenuPanel activeCategory={activeCategory} onCategoryChange={setActiveCategory} onItemTap={order.addItem} />
+            )}
+            {view === 'payment' && (
+              <PaymentFlow total={payableTotal} onComplete={handleCompletePayment} onCancel={handleCancelPayment} />
+            )}
           </div>
           <div className="w-[35%] flex flex-col border-l-2 border-foreground/10 bg-card">
             <OrderPanel
               items={order.items}
               total={order.total}
-              orderNumber={orderNumber}
-              readOnly={view === 'payment'}
+              orderNumber={0}
+              readOnly={view === 'payment' || view === 'pre-payment'}
               onIncrement={order.incrementQuantity}
               onDecrement={order.decrementQuantity}
               onRemoveItem={order.removeItem}
@@ -247,7 +331,7 @@ const POS = () => {
               onProceedToPayment={handleProceedToPayment}
               onAddIncidental={handleAddIncidental}
               onItemDiscount={handleItemDiscount}
-              serviceCharge={serviceCharge.config.enabled ? { enabled: true, percent: serviceCharge.config.percent, amount: scAmount } : undefined}
+              serviceCharge={scData}
             />
           </div>
         </div>
@@ -269,6 +353,17 @@ const POS = () => {
           onApply={handleApplyItemDiscount}
           onRemove={handleRemoveItemDiscount}
           onClose={() => setItemDiscountTarget(null)}
+        />
+      )}
+      {view === 'pre-payment' && (
+        <PrePaymentModal
+          items={order.items}
+          subtotal={order.total}
+          serviceCharge={scData}
+          vatBreakdown={vatBreakdown}
+          totalAmountDue={payableTotal}
+          onContinueToPayment={handleContinueToPayment}
+          onEditOrder={handleEditOrder}
         />
       )}
     </div>
