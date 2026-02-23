@@ -87,23 +87,11 @@ export interface ReceiptData {
   date: string;
   time: string;
   cashier: string;
-  items: { qty: number; name: string; amount: number }[];
+  items: { qty: number; name: string; amount: number; discountLabel?: string; idNumber?: string }[];
   subtotal: number;
   serviceCharge?: {
     percent: number;
     amount: number;
-  };
-  discount?: {
-    type: string;
-    label: string;
-    isVatExempt: boolean;
-    customerName?: string;
-    idNumber?: string;
-    vatRemoved?: number;
-    vatExclusive?: number;
-    discountPercent: number;
-    discountAmount: number;
-    finalAmount: number;
   };
   total: number;
   paymentMethod: string;
@@ -142,9 +130,15 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
   addLine(formatKV('Cash :', data.cashier));
   addLine(divider());
 
-  // Items
+  // Items (with per-item discount labels)
   for (const item of data.items) {
     addLine(formatItemLine(item.qty, item.name, item.amount));
+    if (item.discountLabel) {
+      addLine('   ' + item.discountLabel.substring(0, 29));
+    }
+    if (item.idNumber) {
+      addLine('   ID: ' + item.idNumber.substring(0, 25));
+    }
   }
   addLine(divider());
 
@@ -154,27 +148,6 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
   // Service charge
   if (data.serviceCharge) {
     addLine(formatKV(`Svc Charge (${data.serviceCharge.percent}%):`, data.serviceCharge.amount.toFixed(2)));
-  }
-
-  // Discount section
-  if (data.discount) {
-    addEmpty();
-    if (data.discount.isVatExempt) {
-      addLine('SC/PWD APPLIED');
-      addLine(formatKV('VAT Removed:', data.discount.vatRemoved?.toFixed(2) || '0.00'));
-      addLine(formatKV('VAT-Exempt Sales:', data.discount.vatExclusive?.toFixed(2) || '0.00'));
-      addLine(formatKV(`Less ${data.discount.label}:`, data.discount.discountAmount.toFixed(2)));
-    } else {
-      addLine(`${data.discount.label} APPLIED`);
-      addLine(formatKV(`Less (${data.discount.discountPercent}%):`, data.discount.discountAmount.toFixed(2)));
-    }
-    if (data.discount.customerName) {
-      addLine(formatKV('Name:', data.discount.customerName.substring(0, 20)));
-    }
-    if (data.discount.idNumber) {
-      addLine(formatKV('ID No:', data.discount.idNumber.substring(0, 20)));
-    }
-    addLine(divider());
   }
 
   // Total (bold + double height)
@@ -229,6 +202,12 @@ export function buildReceiptText(data: ReceiptData): string {
 
   for (const item of data.items) {
     lines.push(formatItemLine(item.qty, item.name, item.amount));
+    if (item.discountLabel) {
+      lines.push('   ' + item.discountLabel.substring(0, 29));
+    }
+    if (item.idNumber) {
+      lines.push('   ID: ' + item.idNumber.substring(0, 25));
+    }
   }
   lines.push(divider());
   lines.push(formatKV('Subtotal:', data.subtotal.toFixed(2)));
@@ -236,22 +215,6 @@ export function buildReceiptText(data: ReceiptData): string {
   // Service charge
   if (data.serviceCharge) {
     lines.push(formatKV(`Svc Charge (${data.serviceCharge.percent}%):`, data.serviceCharge.amount.toFixed(2)));
-  }
-
-  if (data.discount) {
-    lines.push('');
-    if (data.discount.isVatExempt) {
-      lines.push('SC/PWD APPLIED');
-      lines.push(formatKV('VAT Removed:', data.discount.vatRemoved?.toFixed(2) || '0.00'));
-      lines.push(formatKV('VAT-Exempt Sales:', data.discount.vatExclusive?.toFixed(2) || '0.00'));
-      lines.push(formatKV(`Less ${data.discount.label}:`, data.discount.discountAmount.toFixed(2)));
-    } else {
-      lines.push(`${data.discount.label} APPLIED`);
-      lines.push(formatKV(`Less (${data.discount.discountPercent}%):`, data.discount.discountAmount.toFixed(2)));
-    }
-    if (data.discount.customerName) lines.push(formatKV('Name:', data.discount.customerName.substring(0, 20)));
-    if (data.discount.idNumber) lines.push(formatKV('ID No:', data.discount.idNumber.substring(0, 20)));
-    lines.push(divider());
   }
 
   lines.push('');
