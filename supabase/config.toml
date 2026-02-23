@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.pos-refund]
 verify_jwt = false
+
+[functions.sku-lookup]
+verify_jwt = false

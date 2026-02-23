@@ -272,6 +272,7 @@ export type Database = {
           central_kitchen_flag: boolean | null
           computed_food_cost: number
           created_at: string
+          display_size: string | null
           gross_margin_percent: number
           gross_margin_value: number
           id: string
@@ -279,6 +280,7 @@ export type Database = {
           is_combo_eligible: boolean
           is_packaging: boolean
           kcal: number | null
+          pos_category_id: string | null
           product_name: string
           sku: string
           srp: number
@@ -293,6 +295,7 @@ export type Database = {
           central_kitchen_flag?: boolean | null
           computed_food_cost?: number
           created_at?: string
+          display_size?: string | null
           gross_margin_percent?: number
           gross_margin_value?: number
           id?: string
@@ -300,6 +303,7 @@ export type Database = {
           is_combo_eligible?: boolean
           is_packaging?: boolean
           kcal?: number | null
+          pos_category_id?: string | null
           product_name: string
           sku: string
           srp?: number
@@ -314,6 +318,7 @@ export type Database = {
           central_kitchen_flag?: boolean | null
           computed_food_cost?: number
           created_at?: string
+          display_size?: string | null
           gross_margin_percent?: number
           gross_margin_value?: number
           id?: string
@@ -321,6 +326,7 @@ export type Database = {
           is_combo_eligible?: boolean
           is_packaging?: boolean
           kcal?: number | null
+          pos_category_id?: string | null
           product_name?: string
           sku?: string
           srp?: number
@@ -329,7 +335,15 @@ export type Database = {
           wastage_percent?: number | null
           yield_adjustment_factor?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_pos_category_id_fkey"
+            columns: ["pos_category_id"]
+            isOneToOne: false
+            referencedRelation: "pos_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pending_transactions: {
         Row: {
@@ -382,6 +396,33 @@ export type Database = {
           transaction_id?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      pos_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }

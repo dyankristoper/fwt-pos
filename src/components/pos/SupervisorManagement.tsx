@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Plus, Eye, EyeOff, Shield, ShieldCheck, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, EyeOff, Shield, ShieldCheck, Pencil, ToggleLeft, ToggleRight, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import ServiceChargeSettings from './ServiceChargeSettings';
 import DiscountManagement from './DiscountManagement';
 import BranchVatSettings from './BranchVatSettings';
+import AdminMenuManagement from './AdminMenuManagement';
 
 interface Supervisor {
   id: string;
@@ -19,7 +20,7 @@ interface SupervisorManagementProps {
   onBack: () => void;
 }
 
-type View = 'auth' | 'list' | 'add' | 'edit';
+type View = 'auth' | 'list' | 'add' | 'edit' | 'menu-admin';
 
 const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
   const [view, setView] = useState<View>('auth');
@@ -174,6 +175,11 @@ const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
     );
   }
 
+  // Menu Admin
+  if (view === 'menu-admin') {
+    return <AdminMenuManagement onBack={() => setView('list')} />;
+  }
+
   // Add / Edit form
   if (view === 'add' || view === 'edit') {
     return (
@@ -291,6 +297,19 @@ const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
         {/* Admin Settings */}
         <div className="mt-8 space-y-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Settings</h2>
+          
+          {/* Menu Items Admin */}
+          <button onClick={() => setView('menu-admin')}
+            className="w-full bg-card rounded-xl border-2 border-foreground/10 p-4 flex items-center gap-3 active:scale-[0.98] transition-transform text-left">
+            <div className="w-10 h-10 rounded-full bg-pos-gold/10 text-pos-gold flex items-center justify-center">
+              <Package size={20} />
+            </div>
+            <div>
+              <p className="font-display font-bold text-sm text-foreground">Menu Items</p>
+              <p className="text-[11px] text-foreground/40">Add, edit, and manage POS products</p>
+            </div>
+          </button>
+
           <BranchVatSettings />
           <DiscountManagement />
           <ServiceChargeSettings />
