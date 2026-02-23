@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
-import { MenuItem, OrderItem } from './types';
+import { MenuItem, OrderItem, ItemDiscount } from './types';
 import { COMBO_SURCHARGE, comboEligibleDrinks } from './menuData';
 
 let nextId = 1;
@@ -13,6 +13,19 @@ export function calculateItemTotal(item: OrderItem): number {
   const addOnsTotal = item.addOns.reduce((sum, a) => sum + a.price, 0);
   total += addOnsTotal * item.quantity;
   return total;
+}
+
+export function calculateItemDiscount(item: OrderItem): number {
+  if (!item.discount) return 0;
+  const lineTotal = calculateItemTotal(item);
+  if (item.discount.type === 'percent') {
+    return Math.round(lineTotal * Math.min(item.discount.value, 100) / 100 * 100) / 100;
+  }
+  return Math.min(item.discount.value, lineTotal);
+}
+
+export function calculateItemFinal(item: OrderItem): number {
+  return Math.max(0, calculateItemTotal(item) - calculateItemDiscount(item));
 }
 
 export function useOrderState() {
@@ -155,8 +168,20 @@ export function useOrderState() {
     setItems(savedItems);
   }, []);
 
+  const applyItemDiscount = useCallback((instanceId: string, discount: ItemDiscount) => {
+    setItems(prev => prev.map(item =>
+      item.instanceId === instanceId ? { ...item, discount } : item
+    ));
+  }, []);
+
+  const removeItemDiscount = useCallback((instanceId: string) => {
+    setItems(prev => prev.map(item =>
+      item.instanceId === instanceId ? { ...item, discount: undefined } : item
+    ));
+  }, []);
+
   const total = useMemo(() => {
-    return items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+    return items.reduce((sum, item) => sum + calculateItemFinal(item), 0);
   }, [items]);
 
   const pendingComboItem = useMemo(() => {
@@ -177,5 +202,7 @@ export function useOrderState() {
     removeAddOn,
     clearOrder,
     restoreOrder,
+    applyItemDiscount,
+    removeItemDiscount,
   };
 }

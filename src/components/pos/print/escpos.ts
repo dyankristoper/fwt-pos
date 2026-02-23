@@ -89,6 +89,10 @@ export interface ReceiptData {
   cashier: string;
   items: { qty: number; name: string; amount: number }[];
   subtotal: number;
+  serviceCharge?: {
+    percent: number;
+    amount: number;
+  };
   discount?: {
     type: string;
     label: string;
@@ -146,6 +150,11 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
 
   // Subtotal
   addLine(formatKV('Subtotal:', data.subtotal.toFixed(2)));
+
+  // Service charge
+  if (data.serviceCharge) {
+    addLine(formatKV(`Svc Charge (${data.serviceCharge.percent}%):`, data.serviceCharge.amount.toFixed(2)));
+  }
 
   // Discount section
   if (data.discount) {
@@ -223,6 +232,11 @@ export function buildReceiptText(data: ReceiptData): string {
   }
   lines.push(divider());
   lines.push(formatKV('Subtotal:', data.subtotal.toFixed(2)));
+
+  // Service charge
+  if (data.serviceCharge) {
+    lines.push(formatKV(`Svc Charge (${data.serviceCharge.percent}%):`, data.serviceCharge.amount.toFixed(2)));
+  }
 
   if (data.discount) {
     lines.push('');
