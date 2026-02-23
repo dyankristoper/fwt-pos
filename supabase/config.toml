@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.stock-check]
 verify_jwt = false
+
+[functions.pos-refund]
+verify_jwt = false
