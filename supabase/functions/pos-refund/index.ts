@@ -78,8 +78,10 @@ Deno.serve(async (req) => {
       .update({ status: apiData.status || (apiResponse.ok ? "SUCCESS" : "FAILED"), api_response: apiData })
       .eq("transaction_id", transaction_id);
 
-    return new Response(JSON.stringify(apiData), {
-      status: apiResponse.status,
+    const clientStatus = apiResponse.status === 404 ? 502 : apiResponse.status;
+
+    return new Response(JSON.stringify({ ...apiData, upstream_status: apiResponse.status }), {
+      status: clientStatus,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
