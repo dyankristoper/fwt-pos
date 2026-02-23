@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Eye, EyeOff, Shield, ShieldCheck, Pencil, ToggleLeft, 
 import { toast } from 'sonner';
 import ServiceChargeSettings from './ServiceChargeSettings';
 import DiscountManagement from './DiscountManagement';
+import BranchVatSettings from './BranchVatSettings';
 
 interface Supervisor {
   id: string;
@@ -290,6 +291,7 @@ const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
         {/* Admin Settings */}
         <div className="mt-8 space-y-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Settings</h2>
+          <BranchVatSettings />
           <DiscountManagement />
           <ServiceChargeSettings />
         </div>
