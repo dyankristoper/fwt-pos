@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,12 +68,17 @@ Deno.serve(async (req) => {
 
     const apiData = await apiResponse.json();
 
+    const finalStatus = apiData.status || (apiResponse.ok ? "SUCCESS" : "FAILED");
+
     await supabase.from("pos_transactions")
-      .update({ status: apiData.status || (apiResponse.ok ? "SUCCESS" : "FAILED"), api_response: apiData })
+      .update({ status: finalStatus, api_response: apiData })
       .eq("transaction_id", transaction_id);
 
-    return new Response(JSON.stringify(apiData), {
-      status: apiResponse.status,
+    // Never forward raw 404 — the client would think THIS function is missing
+    const clientStatus = apiResponse.status === 404 ? 502 : apiResponse.status;
+
+    return new Response(JSON.stringify({ ...apiData, upstream_status: apiResponse.status }), {
+      status: clientStatus,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
