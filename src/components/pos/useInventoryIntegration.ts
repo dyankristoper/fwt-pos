@@ -5,12 +5,12 @@ import { calculateItemTotal } from './useOrderState';
 import { toast } from 'sonner';
 
 export interface DeductionItem {
-  sku_id: string;
+  sku_code: string;
   quantity: number;
 }
 
 export interface StockCheckResult {
-  sku_id: string;
+  sku_code: string;
   available_stock: number;
   sufficient: boolean;
 }
@@ -37,24 +37,24 @@ function buildDeductionItems(orderItems: OrderItem[]): DeductionItem[] {
   const skuMap = new Map<string, number>();
 
   for (const item of orderItems) {
-    const skuId = item.menuItem.sku_id;
-    if (!skuId) continue;
-    skuMap.set(skuId, (skuMap.get(skuId) || 0) + item.quantity);
+    const skuCode = item.menuItem.sku_code;
+    if (!skuCode) continue;
+    skuMap.set(skuCode, (skuMap.get(skuCode) || 0) + item.quantity);
 
     // Combo drink
-    if (item.isCombo && item.comboDrink?.sku_id) {
-      skuMap.set(item.comboDrink.sku_id, (skuMap.get(item.comboDrink.sku_id) || 0) + item.quantity);
+    if (item.isCombo && item.comboDrink?.sku_code) {
+      skuMap.set(item.comboDrink.sku_code, (skuMap.get(item.comboDrink.sku_code) || 0) + item.quantity);
     }
 
     // Add-ons
     for (const addon of item.addOns) {
-      if (addon.sku_id) {
-        skuMap.set(addon.sku_id, (skuMap.get(addon.sku_id) || 0) + item.quantity);
+      if (addon.sku_code) {
+        skuMap.set(addon.sku_code, (skuMap.get(addon.sku_code) || 0) + item.quantity);
       }
     }
   }
 
-  return Array.from(skuMap.entries()).map(([sku_id, quantity]) => ({ sku_id, quantity }));
+  return Array.from(skuMap.entries()).map(([sku_code, quantity]) => ({ sku_code, quantity }));
 }
 
 export function useInventoryIntegration() {
@@ -165,7 +165,7 @@ export function useInventoryIntegration() {
         const insufficient = data.results?.filter((r: StockCheckResult) => !r.sufficient) || [];
         if (insufficient.length > 0) {
           setStatus('failed');
-          setErrorMessage(`Insufficient stock: ${insufficient.map((r: StockCheckResult) => r.sku_id).join(', ')}`);
+          setErrorMessage(`Insufficient stock: ${insufficient.map((r: StockCheckResult) => r.sku_code).join(', ')}`);
           return { ok: false, results: data.results };
         }
         setStatus('idle');
@@ -206,7 +206,7 @@ export function useInventoryIntegration() {
         order_total: orderTotal,
         order_items: orderItems.map(i => ({
           name: i.menuItem.name,
-          sku_id: i.menuItem.sku_id,
+           sku_code: i.menuItem.sku_code,
           quantity: i.quantity,
           total: calculateItemTotal(i),
         })),
@@ -260,7 +260,7 @@ export function useInventoryIntegration() {
         order_total: orderTotal,
         order_items: orderItems.map(i => ({
           name: i.menuItem.name,
-          sku_id: i.menuItem.sku_id,
+          sku_code: i.menuItem.sku_code,
           quantity: i.quantity,
           total: calculateItemTotal(i),
         })),
