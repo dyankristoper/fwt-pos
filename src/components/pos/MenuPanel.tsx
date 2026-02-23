@@ -28,6 +28,7 @@ interface DbMenuItem {
   is_combo_eligible: boolean;
   pos_category_id: string | null;
   gross_margin_percent: number;
+  combo_sku: string | null;
 }
 
 // Map category names to hero images
@@ -66,7 +67,7 @@ const MenuPanel = ({ activeCategory, onCategoryChange, onItemTap }: MenuPanelPro
   const fetchData = useCallback(async () => {
     const [catRes, itemRes] = await Promise.all([
       supabase.from('pos_categories').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
-      supabase.from('menu_items').select('id, sku, product_name, srp, kcal, display_size, is_active, is_combo_eligible, pos_category_id, gross_margin_percent').eq('is_active', true),
+      supabase.from('menu_items').select('id, sku, product_name, srp, kcal, display_size, is_active, is_combo_eligible, pos_category_id, gross_margin_percent, combo_sku').eq('is_active', true),
     ]);
     const cats = (catRes.data as unknown as PosCategory[]) || [];
     const items = (itemRes.data as unknown as DbMenuItem[]) || [];
@@ -102,6 +103,8 @@ const MenuPanel = ({ activeCategory, onCategoryChange, onItemTap }: MenuPanelPro
     category: activeCat ? toLegacyCategory(activeCat.name) : 'sides',
     kcal: db.kcal,
     grossMarginPercent: Number(db.gross_margin_percent),
+    combo_sku: db.combo_sku,
+    is_combo_eligible: db.is_combo_eligible,
   });
 
   if (loading) {

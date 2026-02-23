@@ -7,6 +7,8 @@ export interface MenuItem {
   spicy?: boolean;
   kcal?: number | null;
   grossMarginPercent?: number | null;
+  combo_sku?: string | null;
+  is_combo_eligible?: boolean;
 }
 
 export type MenuCategory = 'sandwiches' | 'chicken' | 'sides' | 'addons' | 'beverages';

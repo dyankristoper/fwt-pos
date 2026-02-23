@@ -34,7 +34,7 @@ export function useOrderState() {
   const lastMainItemIdRef = useRef<string | null>(null);
 
   const addItem = useCallback((menuItem: MenuItem) => {
-    const isSandwich = menuItem.category === 'sandwiches';
+    const isComboEligible = menuItem.is_combo_eligible === true;
     const isMainItem = menuItem.category === 'sandwiches' || menuItem.category === 'chicken';
     const isAddOn = menuItem.category === 'addons';
 
@@ -99,7 +99,7 @@ export function useOrderState() {
     }]);
     lastMainItemIdRef.current = newId;
 
-    if (isSandwich) {
+    if (isComboEligible) {
       setPendingComboItemId(newId);
     }
   }, []);

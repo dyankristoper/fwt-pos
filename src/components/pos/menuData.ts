@@ -53,15 +53,8 @@ export const menuItems: MenuItem[] = [
   { id: 'water', sku_code: 'FW-MENU-BEV-0003', name: 'Bottled Water (500ml)', price: 30, category: 'beverages', kcal: 0 },
 ];
 
-// Combo SKU mapping: sandwich id → combo SKU code
-// When a sandwich is made into a combo, the combo SKU replaces the individual sandwich + drink for inventory deduction
-export const comboSkuMap: Record<string, string> = {
-  'classic': 'FW-MENU-CMB-0001',
-  'featherweight': 'FW-MENU-CMB-0002',
-  'honey-mustard': 'FW-MENU-CMB-0003',
-  'barbecue': 'FW-MENU-CMB-0004',
-  'red-heat': 'FW-MENU-CMB-0005',
-};
+// Combo SKU mapping is now DB-driven via menu_items.combo_sku column
+// Managed through Admin Panel → Menu Items → Combo Eligible toggle
 
 export const categoryLabels: Record<MenuCategory, string> = {
   sandwiches: 'Signature Sandwiches',
