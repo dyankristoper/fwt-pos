@@ -24,7 +24,7 @@ import VoidRefundFlow from '@/components/pos/VoidRefundFlow';
 import ItemDiscountFlow from '@/components/pos/ItemDiscountFlow';
 import PrePaymentModal from '@/components/pos/PrePaymentModal';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
-import { BarChart3, Printer, Shield, Wifi, WifiOff } from 'lucide-react';
+import { BarChart3, Printer, Shield, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
@@ -39,7 +39,7 @@ const POS = () => {
   const [view, setView] = useState<POSView>('menu');
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('sandwiches');
   const [addOnPromptItemId, setAddOnPromptItemId] = useState<string | null>(null);
-  const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null>(null);
+  const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null | 'search'>(null);
   const [itemDiscountTarget, setItemDiscountTarget] = useState<OrderItem | null>(null);
 
   // Branch config + VAT mode loaded on mount
@@ -285,6 +285,13 @@ const POS = () => {
           >
             <Shield size={18} />
           </button>
+          <button
+            onClick={() => setVoidRefundOrder('search')}
+            className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
+            title="Void / Refund"
+          >
+            <AlertTriangle size={18} />
+          </button>
           <span className="font-body text-sm text-primary-foreground/50">
             {new Date().toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
           </span>
@@ -345,7 +352,11 @@ const POS = () => {
         <AddOnPrompt itemName={addOnPromptItem.menuItem.name} onSelectAddOn={handleAddOn} onDone={handleAddOnDone} />
       )}
       {voidRefundOrder && (
-        <VoidRefundFlow order={voidRefundOrder} onComplete={handleVoidRefundComplete} onCancel={() => setVoidRefundOrder(null)} />
+        <VoidRefundFlow
+          order={voidRefundOrder === 'search' ? undefined : voidRefundOrder}
+          onComplete={handleVoidRefundComplete}
+          onCancel={() => setVoidRefundOrder(null)}
+        />
       )}
       {itemDiscountTarget && (
         <ItemDiscountFlow

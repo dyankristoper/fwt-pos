@@ -1,19 +1,28 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, AlertTriangle, RotateCcw, XCircle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, RotateCcw, XCircle, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompletedOrder, OrderItem } from './types';
 import { calculateItemTotal } from './useOrderState';
 import { comboSkuMap } from './menuData';
 
 interface VoidRefundFlowProps {
-  order: CompletedOrder;
+  order?: CompletedOrder | null;
   onComplete: (order: CompletedOrder, type: 'void' | 'refund') => void;
   onCancel: () => void;
 }
 
-type Step = 'select' | 'reason' | 'pin' | 'confirm';
+type Step = 'search' | 'select' | 'reason' | 'pin' | 'confirm';
 type ActionType = 'void' | 'refund';
+
+interface SaleRecord {
+  id: string;
+  order_slip_number: string;
+  total_amount_due: number;
+  payment_method: string;
+  order_items: any;
+  created_at: string;
+}
 
 const VOID_REASONS = [
   'Customer changed mind',
@@ -49,8 +58,40 @@ function buildDeductionItemsFromOrder(items: OrderItem[]): { sku_code: string; q
   return Array.from(skuMap.entries()).map(([sku_code, quantity]) => ({ sku_code, quantity }));
 }
 
-const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) => {
-  const [step, setStep] = useState<Step>('select');
+function saleToCompletedOrder(sale: SaleRecord): CompletedOrder {
+  // Reconstruct a CompletedOrder from DB record
+  // order_items from DB may not have full MenuItem shape, but we preserve what we have
+  const items: OrderItem[] = Array.isArray(sale.order_items)
+    ? sale.order_items.map((item: any, idx: number) => ({
+        instanceId: `db-${sale.id}-${idx}`,
+        menuItem: {
+          id: item.menuItem?.id || `item-${idx}`,
+          sku_code: item.menuItem?.sku_code || '',
+          name: item.menuItem?.name || item.name || 'Unknown',
+          price: item.menuItem?.price || item.price || 0,
+          category: item.menuItem?.category || 'sandwiches',
+        },
+        quantity: item.quantity || 1,
+        isCombo: item.isCombo || false,
+        comboDrink: item.comboDrink || undefined,
+        addOns: item.addOns || [],
+        discount: item.discount || undefined,
+      }))
+    : [];
+
+  return {
+    id: sale.id,
+    orderSlipNumber: sale.order_slip_number,
+    items,
+    total: sale.total_amount_due,
+    paymentMethod: sale.payment_method as any,
+    timestamp: new Date(sale.created_at),
+  };
+}
+
+const VoidRefundFlow = ({ order: initialOrder, onComplete, onCancel }: VoidRefundFlowProps) => {
+  const [step, setStep] = useState<Step>(initialOrder ? 'select' : 'search');
+  const [resolvedOrder, setResolvedOrder] = useState<CompletedOrder | null>(initialOrder || null);
   const [actionType, setActionType] = useState<ActionType | null>(null);
   const [reason, setReason] = useState('');
   const [customReason, setCustomReason] = useState('');
@@ -59,7 +100,41 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
   const [approverName, setApproverName] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SaleRecord[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  const order = resolvedOrder!;
   const finalReason = reason === 'Other' ? customReason.trim() : reason;
+
+  const handleSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearching(true);
+    setSearched(true);
+
+    // Search by order_slip_number (partial match) — today only by default, or all if full slip provided
+    const { data, error } = await supabase
+      .from('completed_sales')
+      .select('id, order_slip_number, total_amount_due, payment_method, order_items, created_at')
+      .ilike('order_slip_number', `%${q}%`)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      toast.error('Search failed');
+      console.error(error);
+    }
+    setSearchResults((data as unknown as SaleRecord[]) || []);
+    setSearching(false);
+  };
+
+  const handleSelectSale = (sale: SaleRecord) => {
+    setResolvedOrder(saleToCompletedOrder(sale));
+    setStep('select');
+  };
 
   const handleSelectType = (type: ActionType) => {
     setActionType(type);
@@ -75,7 +150,6 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
   };
 
   const handlePinSubmit = async () => {
-    // Validate PIN against supervisors table
     const { data } = await supabase
       .from('supervisors')
       .select('name')
@@ -96,7 +170,7 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
   };
 
   const handleConfirm = async () => {
-    if (!actionType) return;
+    if (!actionType || !resolvedOrder) return;
     setSaving(true);
 
     try {
@@ -119,7 +193,6 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
         processed_by: 'CASHIER',
       });
 
-      // Reverse inventory via pos-refund edge function
       const deductionItems = buildDeductionItemsFromOrder(order.items);
       if (deductionItems.length > 0) {
         const { error } = await supabase.functions.invoke('pos-refund', {
@@ -155,12 +228,87 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
   const actionLabel = actionType === 'void' ? 'Void' : 'Refund';
   const actionIcon = actionType === 'void' ? <XCircle size={20} /> : <RotateCcw size={20} />;
 
+  // Step: Search for order
+  if (step === 'search') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
+        <div className="bg-card rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-2 mb-6">
+            <Search size={22} className="text-accent" />
+            <h2 className="font-display text-xl font-bold text-foreground">Find Order</h2>
+          </div>
+
+          <p className="text-muted-foreground text-sm mb-4">
+            Search by order slip number (e.g. 022326-0001-QC01)
+          </p>
+
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              className="flex-1 h-12 px-4 bg-background border-2 border-foreground/10 rounded-xl font-display text-sm text-foreground focus:border-accent focus:outline-none transition-colors"
+              placeholder="Order slip number..."
+              autoFocus
+            />
+            <button
+              onClick={handleSearch}
+              disabled={!searchQuery.trim() || searching}
+              className="h-12 px-5 bg-pos-gold text-primary rounded-xl font-display font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-30 flex items-center gap-2"
+            >
+              {searching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+              Search
+            </button>
+          </div>
+
+          {/* Results */}
+          {searched && !searching && searchResults.length === 0 && (
+            <div className="text-center py-6 text-foreground/30">
+              <Search size={32} className="mx-auto mb-2" />
+              <p className="font-display font-semibold text-sm">No orders found</p>
+              <p className="text-xs mt-1">Try a different order slip number</p>
+            </div>
+          )}
+
+          {searchResults.length > 0 && (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {searchResults.map(sale => (
+                <button
+                  key={sale.id}
+                  onClick={() => handleSelectSale(sale)}
+                  className="w-full bg-background rounded-xl border-2 border-foreground/10 p-3 text-left active:scale-[0.98] transition-transform hover:border-accent/40"
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-display font-bold text-sm text-foreground">{sale.order_slip_number}</span>
+                    <span className="font-display font-bold text-foreground">₱{Number(sale.total_amount_due).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-foreground/50">
+                    <span className="capitalize">{sale.payment_method}</span>
+                    <span>{new Date(sale.created_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <button onClick={onCancel} className="w-full mt-4 h-11 text-foreground/40 font-display font-semibold active:scale-[0.97] transition-transform">
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Step: Select void or refund
   if (step === 'select') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
         <div className="bg-card rounded-2xl p-8 shadow-2xl max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-2 mb-6">
+            {!initialOrder && (
+              <button onClick={() => setStep('search')} className="text-foreground/40 active:text-foreground p-1"><ArrowLeft size={20} /></button>
+            )}
             <AlertTriangle size={22} className="text-accent" />
             <h2 className="font-display text-xl font-bold text-foreground">Void / Refund</h2>
           </div>
