@@ -3,8 +3,9 @@ import { useOrderState } from '@/components/pos/useOrderState';
 import { useDailySummary } from '@/components/pos/useDailySummary';
 import { usePrinter } from '@/components/pos/print/usePrinter';
 import { useInventoryIntegration } from '@/components/pos/useInventoryIntegration';
+import { useServiceCharge } from '@/components/pos/useServiceCharge';
 import { ReceiptData } from '@/components/pos/print/escpos';
-import { calculateItemTotal } from '@/components/pos/useOrderState';
+import { calculateItemFinal } from '@/components/pos/useOrderState';
 import MenuPanel from '@/components/pos/MenuPanel';
 import OrderPanel from '@/components/pos/OrderPanel';
 import ComboPrompt from '@/components/pos/ComboPrompt';
@@ -16,7 +17,8 @@ import DiscountFlow, { DiscountResult } from '@/components/pos/DiscountFlow';
 import PrinterSettings from '@/components/pos/PrinterSettings';
 import SupervisorManagement from '@/components/pos/SupervisorManagement';
 import VoidRefundFlow from '@/components/pos/VoidRefundFlow';
-import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder } from '@/components/pos/types';
+import ItemDiscountFlow from '@/components/pos/ItemDiscountFlow';
+import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
 import { BarChart3, Printer, Shield, Wifi, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
@@ -28,6 +30,7 @@ const POS = () => {
   const { summary, completeOrder, addDiscount, addVoidRefund } = useDailySummary();
   const printer = usePrinter();
   const inventory = useInventoryIntegration();
+  const serviceCharge = useServiceCharge();
   const [view, setView] = useState<POSView>('menu');
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('sandwiches');
   const [orderNumber, setOrderNumber] = useState(1);
@@ -35,6 +38,7 @@ const POS = () => {
   const [showDiscountFlow, setShowDiscountFlow] = useState(false);
   const [discountResult, setDiscountResult] = useState<DiscountResult | null>(null);
   const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null>(null);
+  const [itemDiscountTarget, setItemDiscountTarget] = useState<OrderItem | null>(null);
 
   const saleId = `ORD-${String(orderNumber).padStart(4, '0')}`;
 
@@ -69,7 +73,9 @@ const POS = () => {
 
   const buildReceiptData = useCallback((method: PaymentMethod): ReceiptData => {
     const now = new Date();
-    const finalTotal = discountResult ? discountResult.finalAmount : order.total;
+    const scAmount = serviceCharge.calculateServiceCharge(order.total);
+    const subtotalWithSC = order.total + scAmount;
+    const finalTotal = discountResult ? discountResult.finalAmount : subtotalWithSC;
     return {
       orderNumber: `OS-${String(orderNumber).padStart(6, '0')}`,
       date: now.toISOString().slice(0, 10),
@@ -78,14 +84,19 @@ const POS = () => {
       items: order.items.map(item => ({
         qty: item.quantity,
         name: item.menuItem.name,
-        amount: calculateItemTotal(item),
+        amount: calculateItemFinal(item),
       })),
       subtotal: order.total,
+      serviceCharge: serviceCharge.config.enabled ? {
+        percent: serviceCharge.config.percent,
+        amount: scAmount,
+      } : undefined,
       discount: discountResult ? {
         type: discountResult.discountType,
         label: discountResult.discountType === 'SC' ? 'SC Discount' :
                discountResult.discountType === 'PWD' ? 'PWD Discount' :
-               discountResult.discountType === 'EMP' ? 'Employee Discount' : 'Promo Discount',
+               discountResult.discountType === 'EMP' ? 'Employee Discount' :
+               discountResult.discountType === 'NATL_ATH' ? 'National Athlete Discount' : 'Promo Discount',
         isVatExempt: discountResult.discountType === 'SC' || discountResult.discountType === 'PWD',
         customerName: discountResult.customerName || undefined,
         idNumber: discountResult.idNumber || undefined,
@@ -98,7 +109,7 @@ const POS = () => {
       total: finalTotal,
       paymentMethod: method,
     };
-  }, [order, orderNumber, discountResult]);
+  }, [order, orderNumber, discountResult, serviceCharge]);
 
   const handleCompletePayment = useCallback(
     async (method: PaymentMethod) => {
@@ -178,12 +189,29 @@ const POS = () => {
     setVoidRefundOrder(completedOrder);
   }, []);
 
-  const handleVoidRefundComplete = useCallback((order: CompletedOrder, type: 'void' | 'refund') => {
-    addVoidRefund({ orderId: order.id, type, amount: order.total });
+  const handleVoidRefundComplete = useCallback((completedOrd: CompletedOrder, type: 'void' | 'refund') => {
+    addVoidRefund({ orderId: completedOrd.id, type, amount: completedOrd.total });
     setVoidRefundOrder(null);
   }, [addVoidRefund]);
 
-  const payableTotal = discountResult ? discountResult.finalAmount : order.total;
+  const handleItemDiscount = useCallback((item: OrderItem) => {
+    setItemDiscountTarget(item);
+  }, []);
+
+  const handleApplyItemDiscount = useCallback((instanceId: string, discount: ItemDiscount) => {
+    order.applyItemDiscount(instanceId, discount);
+    setItemDiscountTarget(null);
+    toast.success(`Discount applied to ${order.items.find(i => i.instanceId === instanceId)?.menuItem.name}`);
+  }, [order]);
+
+  const handleRemoveItemDiscount = useCallback((instanceId: string) => {
+    order.removeItemDiscount(instanceId);
+    setItemDiscountTarget(null);
+    toast.success('Item discount removed');
+  }, [order]);
+
+  const scAmount = serviceCharge.calculateServiceCharge(order.total);
+  const payableTotal = discountResult ? discountResult.finalAmount : (order.total + scAmount);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background touch-manipulation select-none" onContextMenu={e => e.preventDefault()}>
@@ -266,7 +294,9 @@ const POS = () => {
               onProceedToPayment={handleProceedToPayment}
               onAddIncidental={handleAddIncidental}
               onApplyDiscount={handleApplyDiscount}
+              onItemDiscount={handleItemDiscount}
               discountApplied={discountResult ? { discountType: discountResult.discountType, finalAmount: discountResult.finalAmount } : null}
+              serviceCharge={serviceCharge.config.enabled ? { enabled: true, percent: serviceCharge.config.percent, amount: scAmount } : undefined}
             />
           </div>
         </div>
@@ -284,6 +314,14 @@ const POS = () => {
       )}
       {voidRefundOrder && (
         <VoidRefundFlow order={voidRefundOrder} onComplete={handleVoidRefundComplete} onCancel={() => setVoidRefundOrder(null)} />
+      )}
+      {itemDiscountTarget && (
+        <ItemDiscountFlow
+          item={itemDiscountTarget}
+          onApply={handleApplyItemDiscount}
+          onRemove={handleRemoveItemDiscount}
+          onClose={() => setItemDiscountTarget(null)}
+        />
       )}
     </div>
   );

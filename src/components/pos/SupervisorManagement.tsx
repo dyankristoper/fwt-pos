@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Plus, Eye, EyeOff, Shield, ShieldCheck, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
 import { toast } from 'sonner';
+import ServiceChargeSettings from './ServiceChargeSettings';
 
 interface Supervisor {
   id: string;
@@ -284,6 +285,12 @@ const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
             <p className="font-display font-semibold">No supervisors yet</p>
           </div>
         )}
+
+        {/* Admin Settings */}
+        <div className="mt-8">
+          <h2 className="font-display text-lg font-bold text-foreground mb-4">Settings</h2>
+          <ServiceChargeSettings />
+        </div>
       </div>
     </div>
   );

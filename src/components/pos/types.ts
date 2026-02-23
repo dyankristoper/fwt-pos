@@ -11,6 +11,12 @@ export interface MenuItem {
 
 export type MenuCategory = 'sandwiches' | 'chicken' | 'sides' | 'addons' | 'beverages';
 
+export interface ItemDiscount {
+  type: 'percent' | 'fixed';
+  value: number;
+  reason: string;
+}
+
 export interface OrderItem {
   instanceId: string;
   menuItem: MenuItem;
@@ -18,6 +24,7 @@ export interface OrderItem {
   isCombo: boolean;
   comboDrink?: MenuItem;
   addOns: MenuItem[];
+  discount?: ItemDiscount;
 }
 
 export interface CompletedOrder {
