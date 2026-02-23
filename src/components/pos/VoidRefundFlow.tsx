@@ -4,6 +4,7 @@ import { ArrowLeft, AlertTriangle, RotateCcw, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompletedOrder, OrderItem } from './types';
 import { calculateItemTotal } from './useOrderState';
+import { comboSkuMap } from './menuData';
 
 interface VoidRefundFlowProps {
   order: CompletedOrder;
@@ -26,10 +27,20 @@ const VOID_REASONS = [
 function buildDeductionItemsFromOrder(items: OrderItem[]): { sku_code: string; quantity: number }[] {
   const skuMap = new Map<string, number>();
   for (const item of items) {
-    const sku = item.menuItem.sku_code;
-    if (sku) skuMap.set(sku, (skuMap.get(sku) || 0) + item.quantity);
-    if (item.isCombo && item.comboDrink?.sku_code) {
-      skuMap.set(item.comboDrink.sku_code, (skuMap.get(item.comboDrink.sku_code) || 0) + item.quantity);
+    if (item.isCombo) {
+      const comboSku = comboSkuMap[item.menuItem.id];
+      if (comboSku) {
+        skuMap.set(comboSku, (skuMap.get(comboSku) || 0) + item.quantity);
+      } else {
+        const sku = item.menuItem.sku_code;
+        if (sku) skuMap.set(sku, (skuMap.get(sku) || 0) + item.quantity);
+        if (item.comboDrink?.sku_code) {
+          skuMap.set(item.comboDrink.sku_code, (skuMap.get(item.comboDrink.sku_code) || 0) + item.quantity);
+        }
+      }
+    } else {
+      const sku = item.menuItem.sku_code;
+      if (sku) skuMap.set(sku, (skuMap.get(sku) || 0) + item.quantity);
     }
     for (const addon of item.addOns) {
       if (addon.sku_code) skuMap.set(addon.sku_code, (skuMap.get(addon.sku_code) || 0) + item.quantity);

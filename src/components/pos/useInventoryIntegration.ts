@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem } from './types';
 import { calculateItemTotal } from './useOrderState';
+import { comboSkuMap } from './menuData';
 import { toast } from 'sonner';
 
 export interface DeductionItem {
@@ -37,16 +38,25 @@ function buildDeductionItems(orderItems: OrderItem[]): DeductionItem[] {
   const skuMap = new Map<string, number>();
 
   for (const item of orderItems) {
-    const skuCode = item.menuItem.sku_code;
-    if (!skuCode) continue;
-    skuMap.set(skuCode, (skuMap.get(skuCode) || 0) + item.quantity);
-
-    // Combo drink
-    if (item.isCombo && item.comboDrink?.sku_code) {
-      skuMap.set(item.comboDrink.sku_code, (skuMap.get(item.comboDrink.sku_code) || 0) + item.quantity);
+    if (item.isCombo) {
+      // Use dedicated combo SKU instead of sandwich + drink separately
+      const comboSku = comboSkuMap[item.menuItem.id];
+      if (comboSku) {
+        skuMap.set(comboSku, (skuMap.get(comboSku) || 0) + item.quantity);
+      } else {
+        // Fallback: deduct sandwich + drink individually if no combo SKU mapping
+        const skuCode = item.menuItem.sku_code;
+        if (skuCode) skuMap.set(skuCode, (skuMap.get(skuCode) || 0) + item.quantity);
+        if (item.comboDrink?.sku_code) {
+          skuMap.set(item.comboDrink.sku_code, (skuMap.get(item.comboDrink.sku_code) || 0) + item.quantity);
+        }
+      }
+    } else {
+      const skuCode = item.menuItem.sku_code;
+      if (skuCode) skuMap.set(skuCode, (skuMap.get(skuCode) || 0) + item.quantity);
     }
 
-    // Add-ons
+    // Add-ons always deducted individually
     for (const addon of item.addOns) {
       if (addon.sku_code) {
         skuMap.set(addon.sku_code, (skuMap.get(addon.sku_code) || 0) + item.quantity);
