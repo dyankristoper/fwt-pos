@@ -1,14 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MenuCategory, MenuItem } from './types';
-import { Flame, Loader2 } from 'lucide-react';
-
-// Legacy images for backward compat
-import sandwichImg from '@/assets/pos/sandwich.jpg';
-import chickenImg from '@/assets/pos/chicken-box.jpg';
-import sidesImg from '@/assets/pos/sides.jpg';
-import addonsImg from '@/assets/pos/addons.jpg';
-import drinksImg from '@/assets/pos/drinks.jpg';
+import { Loader2 } from 'lucide-react';
 
 interface PosCategory {
   id: string;
@@ -31,22 +24,12 @@ interface DbMenuItem {
   combo_sku: string | null;
 }
 
-// Map category names to hero images
-const categoryImageMap: Record<string, string> = {
-  'Signature Sandwiches': sandwichImg,
-  'Chicken Boxes': chickenImg,
-  'Sides': sidesImg,
-  'Add-ons': addonsImg,
-  'Beverages': drinksImg,
-};
-
 interface MenuPanelProps {
   activeCategory: MenuCategory | string;
   onCategoryChange: (category: any) => void;
   onItemTap: (item: MenuItem) => void;
 }
 
-// Map DB category name to legacy MenuCategory type for backward compat
 function toLegacyCategory(name: string): MenuCategory {
   const map: Record<string, MenuCategory> = {
     'Signature Sandwiches': 'sandwiches',
@@ -74,7 +57,6 @@ const MenuPanel = ({ activeCategory, onCategoryChange, onItemTap }: MenuPanelPro
     setCategories(cats);
     setDbItems(items);
     
-    // Set initial active category
     if (cats.length > 0 && !activeCatId) {
       setActiveCatId(cats[0].id);
     }
@@ -85,7 +67,6 @@ const MenuPanel = ({ activeCategory, onCategoryChange, onItemTap }: MenuPanelPro
 
   const activeCat = categories.find(c => c.id === activeCatId);
   const filteredItems = dbItems.filter(i => i.pos_category_id === activeCatId);
-  const categoryImage = activeCat ? (categoryImageMap[activeCat.name] || sandwichImg) : sandwichImg;
 
   const handleCategoryChange = (catId: string) => {
     setActiveCatId(catId);
@@ -132,21 +113,6 @@ const MenuPanel = ({ activeCategory, onCategoryChange, onItemTap }: MenuPanelPro
             {cat.name}
           </button>
         ))}
-      </div>
-
-      {/* Category hero image */}
-      <div className="relative h-28 lg:h-32 rounded-xl overflow-hidden mb-3 shrink-0">
-        <img
-          src={categoryImage}
-          alt={activeCat?.name || ''}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/80 via-primary/40 to-transparent" />
-        <div className="absolute inset-0 flex items-center px-6">
-          <h2 className="font-display text-2xl lg:text-3xl font-bold text-primary-foreground drop-shadow-lg">
-            {activeCat?.name || 'Menu'}
-          </h2>
-        </div>
       </div>
 
       {/* Menu items grid */}
