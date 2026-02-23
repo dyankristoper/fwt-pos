@@ -38,6 +38,7 @@ export interface OrderItem {
 
 export interface CompletedOrder {
   id: string;
+  orderSlipNumber: string;
   items: OrderItem[];
   total: number;
   paymentMethod: PaymentMethod;

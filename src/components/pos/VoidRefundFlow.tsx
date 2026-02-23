@@ -109,7 +109,7 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
       }));
 
       await supabase.from('void_refund_log').insert({
-        original_sale_id: order.id,
+        original_sale_id: order.orderSlipNumber,
         type: actionType,
         reason: finalReason,
         items_json: itemsJson,
@@ -124,7 +124,7 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
       if (deductionItems.length > 0) {
         const { error } = await supabase.functions.invoke('pos-refund', {
           body: {
-            original_order_id: order.id,
+            original_order_id: order.orderSlipNumber,
             refund_type: actionType,
             location_id: 'DEFAULT',
             items: deductionItems,
@@ -141,8 +141,8 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
 
       toast.success(
         actionType === 'void'
-          ? `Order ${order.id} voided successfully`
-          : `Refund ₱${order.total.toFixed(2)} processed for ${order.id}`
+          ? `Order ${order.orderSlipNumber} voided successfully`
+          : `Refund ₱${order.total.toFixed(2)} processed for ${order.orderSlipNumber}`
       );
       onComplete(order, actionType);
     } catch {
@@ -168,7 +168,7 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
           <div className="bg-foreground/5 rounded-xl p-4 mb-6">
             <div className="flex justify-between mb-1">
               <span className="text-xs text-foreground/50 uppercase">Order</span>
-              <span className="font-display font-bold text-sm text-foreground">{order.id}</span>
+              <span className="font-display font-bold text-sm text-foreground">{order.orderSlipNumber}</span>
             </div>
             <div className="flex justify-between mb-1">
               <span className="text-xs text-foreground/50 uppercase">Amount</span>
@@ -247,7 +247,7 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
             <h2 className="font-display text-xl font-bold text-foreground">Supervisor Approval</h2>
           </div>
           <p className="text-muted-foreground text-sm mb-4">
-            Enter supervisor PIN to authorize <span className="font-semibold text-foreground">{actionLabel.toLowerCase()}</span> of {order.id}
+            Enter supervisor PIN to authorize <span className="font-semibold text-foreground">{actionLabel.toLowerCase()}</span> of {order.orderSlipNumber}
           </p>
           <input type="password" value={pin} onChange={e => { setPin(e.target.value); setPinError(false); }} maxLength={8}
             className={`w-full h-14 px-4 bg-background border-2 rounded-xl font-display text-2xl text-center tracking-[0.5em] text-foreground focus:outline-none transition-colors ${
@@ -278,7 +278,7 @@ const VoidRefundFlow = ({ order, onComplete, onCancel }: VoidRefundFlowProps) =>
           <div className="bg-background rounded-xl border-2 border-foreground/10 p-5 mb-4 font-mono text-sm space-y-2">
             <div className="flex justify-between">
               <span className="text-foreground/60">Order</span>
-              <span className="font-bold text-foreground">{order.id}</span>
+              <span className="font-bold text-foreground">{order.orderSlipNumber}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-foreground/60">Action</span>

@@ -151,7 +151,7 @@ const POS = () => {
       }
 
       // Track in daily summary
-      completeOrder(order.items, payableTotal, method);
+      completeOrder(order.items, payableTotal, method, orderSlipNumber);
       toast.success(`Order ${orderSlipNumber} completed ✓`);
 
       // 4. Print 3 copies of Order Slip
@@ -232,7 +232,7 @@ const POS = () => {
   }, []);
 
   const handleVoidRefundComplete = useCallback((completedOrd: CompletedOrder, type: 'void' | 'refund') => {
-    addVoidRefund({ orderId: completedOrd.id, type, amount: completedOrd.total });
+    addVoidRefund({ orderId: completedOrd.orderSlipNumber, type, amount: completedOrd.total });
     setVoidRefundOrder(null);
   }, [addVoidRefund]);
 

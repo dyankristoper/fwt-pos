@@ -11,10 +11,13 @@ export function useDailySummary() {
   const completeOrder = useCallback((
     items: OrderItem[],
     total: number,
-    paymentMethod: PaymentMethod
+    paymentMethod: PaymentMethod,
+    orderSlipNumber?: string
   ) => {
+    const id = `ORD-${String(orderCounter++).padStart(4, '0')}`;
     const newOrder: CompletedOrder = {
-      id: `ORD-${String(orderCounter++).padStart(4, '0')}`,
+      id,
+      orderSlipNumber: orderSlipNumber || id,
       items: [...items],
       total,
       paymentMethod,
