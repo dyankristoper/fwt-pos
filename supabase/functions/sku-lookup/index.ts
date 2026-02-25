@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${FWTEAM_ANON_KEY}`,
         "apikey": FWTEAM_ANON_KEY,
-        "x-api-secret": POS_API_SECRET || "",
+        "x-pos-api-key": POS_API_SECRET || "",
       },
       body: JSON.stringify({
         location_id: "DEFAULT",
