@@ -204,15 +204,66 @@ class BluetoothPrinterService {
       const plugin = await getSppPlugin();
       if (!plugin) return false;
 
-      // Convert Uint8Array to string for the SPP plugin
-      const decoder = new TextDecoder('latin1');
-      const str = decoder.decode(data);
-      await plugin.print({ data: str });
+      // Send in smaller chunks to avoid overflowing the SPP buffer
+      const CHUNK = 128;
+      const DELAY = 50;
+      for (let offset = 0; offset < data.length; offset += CHUNK) {
+        const chunk = data.slice(offset, offset + CHUNK);
+        // Convert chunk to latin1 string for the SPP plugin
+        let str = '';
+        for (let i = 0; i < chunk.length; i++) {
+          str += String.fromCharCode(chunk[i]);
+        }
+        await plugin.print({ data: str });
+        if (offset + CHUNK < data.length) {
+          await new Promise(r => setTimeout(r, DELAY));
+        }
+      }
       console.log('[BT-SPP] Print data sent, bytes:', data.length);
       return true;
     } catch (err: any) {
       console.error('[BT-SPP] Print error:', err);
-      this.updateStatus({ error: err?.message || 'Print failed' });
+      const msg = err?.message || 'Print failed';
+      this.updateStatus({ error: msg });
+
+      // If the connection dropped during print, attempt auto-reconnect
+      if (msg.toLowerCase().includes('disconnect') || msg.toLowerCase().includes('socket') || msg.toLowerCase().includes('closed')) {
+        console.log('[BT-SPP] Connection lost during print, attempting reconnect...');
+        this.updateStatus({ connected: false, error: 'Connection lost, reconnecting...' });
+        const reconnected = await this.autoReconnect();
+        if (reconnected) {
+          console.log('[BT-SPP] Reconnected after print failure, retrying...');
+          this.updateStatus({ error: null });
+          return this.sendBytesNativeOnce(data);
+        }
+      }
+      return false;
+    }
+  }
+
+  /** Single attempt send without retry (prevents infinite recursion) */
+  private async sendBytesNativeOnce(data: Uint8Array): Promise<boolean> {
+    try {
+      const plugin = await getSppPlugin();
+      if (!plugin) return false;
+      const CHUNK = 128;
+      const DELAY = 50;
+      for (let offset = 0; offset < data.length; offset += CHUNK) {
+        const chunk = data.slice(offset, offset + CHUNK);
+        let str = '';
+        for (let i = 0; i < chunk.length; i++) {
+          str += String.fromCharCode(chunk[i]);
+        }
+        await plugin.print({ data: str });
+        if (offset + CHUNK < data.length) {
+          await new Promise(r => setTimeout(r, DELAY));
+        }
+      }
+      console.log('[BT-SPP] Retry print succeeded');
+      return true;
+    } catch (err: any) {
+      console.error('[BT-SPP] Retry print also failed:', err);
+      this.updateStatus({ connected: false, error: 'Print failed after reconnect' });
       return false;
     }
   }
