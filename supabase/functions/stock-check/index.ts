@@ -1,7 +1,7 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-api-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -10,6 +10,17 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Shared secret validation
+    const POS_API_SECRET = Deno.env.get("POS_API_SECRET");
+    if (POS_API_SECRET) {
+      const clientSecret = req.headers.get("x-api-secret");
+      if (clientSecret !== POS_API_SECRET) {
+        return new Response(
+          JSON.stringify({ status: "FAILED", error_code: "UNAUTHORIZED", message: "Invalid or missing API secret" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
     const FWTEAM_API_URL = Deno.env.get("FWTEAM_API_URL");
     if (!FWTEAM_API_URL) throw new Error("FWTEAM_API_URL is not configured");
 
