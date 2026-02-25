@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
     }
 
     // Forward to FWTeam App
+    console.log("Forwarding to FWTeam:", `${FWTEAM_API_URL}/functions/v1/deduct-inventory`);
     const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/deduct-inventory`, {
       method: "POST",
       headers: {
