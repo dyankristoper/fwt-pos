@@ -78,6 +78,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${FWTEAM_ANON_KEY}`,
         "apikey": FWTEAM_ANON_KEY,
+        "x-api-secret": POS_API_SECRET || "",
       },
       body: JSON.stringify({ transaction_id, order_id, location_id, actual_date, items, user_id, timestamp }),
     });
