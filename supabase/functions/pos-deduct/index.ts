@@ -84,8 +84,11 @@ Deno.serve(async (req) => {
       .update({ status: finalStatus, api_response: apiData })
       .eq("transaction_id", transaction_id);
 
-    // Never forward raw 404 — the client would think THIS function is missing
-    const clientStatus = apiResponse.status === 404 ? 502 : apiResponse.status;
+    // Never forward raw 404 — the client would think THIS function is missing.
+    // Also normalize upstream stock-validation failures (422) to 200 so POS can handle them as business failures,
+    // not transport/runtime errors.
+    const isStockValidationFailure = apiResponse.status === 422 && apiData?.status === "FAILED";
+    const clientStatus = apiResponse.status === 404 ? 502 : isStockValidationFailure ? 200 : apiResponse.status;
 
     return new Response(JSON.stringify({ ...apiData, upstream_status: apiResponse.status }), {
       status: clientStatus,
