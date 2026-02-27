@@ -100,6 +100,7 @@ export interface ReceiptData {
   paymentMethod: string;
   cashReceived?: number;
   change?: number;
+  isReprint?: boolean;
 }
 
 /**
@@ -114,6 +115,15 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
 
   // Initialize
   addCmd(CMD.INIT);
+
+  // Reprint label
+  if (data.isReprint) {
+    addCmd(CMD.ALIGN_CENTER);
+    addCmd(CMD.BOLD_ON);
+    addLine('*** REPRINT COPY ***');
+    addCmd(CMD.BOLD_OFF);
+    addEmpty();
+  }
 
   // Header (centered)
   addCmd(CMD.ALIGN_CENTER);
@@ -174,6 +184,9 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
   // Footer (centered)
   addCmd(CMD.ALIGN_CENTER);
   addLine(divider());
+  if (data.isReprint) {
+    addLine('*** REPRINT COPY ***');
+  }
   addLine('THIS IS NOT A VALID');
   addLine('OFFICIAL RECEIPT.');
   addLine('Manual OR will be issued.');
@@ -192,6 +205,11 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
  */
 export function buildReceiptText(data: ReceiptData): string {
   const lines: string[] = [];
+
+  if (data.isReprint) {
+    lines.push(center('*** REPRINT COPY ***'));
+    lines.push('');
+  }
 
   lines.push(center(data.storeName || 'FEATHERWEIGHT CHICKEN'));
   if (data.branchName) lines.push(center(data.branchName));

@@ -1,15 +1,16 @@
 import { DailySummaryData, CompletedOrder } from './types';
-import { ArrowLeft, Banknote, CreditCard, Smartphone, AlertTriangle, FileText } from 'lucide-react';
+import { ArrowLeft, Banknote, CreditCard, Smartphone, AlertTriangle, FileText, Printer } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface DailySummaryProps {
   summary: DailySummaryData;
   onBack: () => void;
   onVoidRefund?: (order: CompletedOrder) => void;
+  onReprint?: (order: CompletedOrder) => void;
   onZReading?: () => void;
 }
 
-const DailySummary = ({ summary, onBack, onVoidRefund, onZReading }: DailySummaryProps) => {
+const DailySummary = ({ summary, onBack, onVoidRefund, onReprint, onZReading }: DailySummaryProps) => {
   const cashOrders = summary.orders.filter(o => o.paymentMethod === 'cash').length;
   const debitOrders = summary.orders.filter(o => o.paymentMethod === 'debit').length;
   const creditOrders = summary.orders.filter(o => o.paymentMethod === 'credit').length;
@@ -97,7 +98,16 @@ const DailySummary = ({ summary, onBack, onVoidRefund, onZReading }: DailySummar
                       {order.paymentMethod === 'ewallet' ? 'E-Wallet' : order.paymentMethod}
                     </span>
                     <span className="text-right font-display font-bold text-sm">₱{order.total.toLocaleString()}</span>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                      {onReprint && (
+                        <button
+                          onClick={() => onReprint(order)}
+                          className="h-8 px-3 text-xs font-display font-semibold text-pos-gold bg-pos-gold/10 rounded-lg flex items-center gap-1 active:scale-[0.97] transition-transform border border-pos-gold/20"
+                        >
+                          <Printer size={12} />
+                          Reprint
+                        </button>
+                      )}
                       {onVoidRefund && (
                         <button
                           onClick={() => onVoidRefund(order)}

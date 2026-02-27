@@ -4,6 +4,7 @@ import { ArrowLeft, AlertTriangle, RotateCcw, XCircle, Search, Loader2 } from 'l
 import { toast } from 'sonner';
 import { CompletedOrder, OrderItem } from './types';
 import { calculateItemTotal } from './useOrderState';
+import { updateSlipStatus } from './useSalesEngine';
 
 interface VoidRefundFlowProps {
   order?: CompletedOrder | null;
@@ -24,12 +25,11 @@ interface SaleRecord {
 }
 
 const VOID_REASONS = [
-  'Customer changed mind',
-  'Wrong order entered',
-  'Item unavailable',
-  'Duplicate entry',
-  'System error',
-  'Other',
+  'Customer Cancelled',
+  'Wrong Item',
+  'Duplicate Order',
+  'System Error',
+  'Supervisor Override',
 ];
 
 function buildDeductionItemsFromOrder(items: OrderItem[]): { sku_code: string; quantity: number }[] {
@@ -94,6 +94,7 @@ const VoidRefundFlow = ({ order: initialOrder, onComplete, onCancel }: VoidRefun
   const [actionType, setActionType] = useState<ActionType | null>(null);
   const [reason, setReason] = useState('');
   const [customReason, setCustomReason] = useState('');
+  const [voidNote, setVoidNote] = useState('');
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
   const [approverName, setApproverName] = useState('');
@@ -191,6 +192,15 @@ const VoidRefundFlow = ({ order: initialOrder, onComplete, onCancel }: VoidRefun
         approved_by: approverName,
         processed_by: 'CASHIER',
       });
+
+      // Update order_slips status if void
+      if (actionType === 'void') {
+        await updateSlipStatus(order.orderSlipNumber, {
+          reason: finalReason,
+          note: voidNote.trim() || undefined,
+          approvedBy: approverName,
+        });
+      }
 
       const deductionItems = buildDeductionItemsFromOrder(order.items);
       if (deductionItems.length > 0) {
@@ -369,11 +379,9 @@ const VoidRefundFlow = ({ order: initialOrder, onComplete, onCancel }: VoidRefun
             ))}
           </div>
 
-          {reason === 'Other' && (
-            <textarea value={customReason} onChange={e => setCustomReason(e.target.value)} maxLength={200} rows={2}
-              className="w-full px-4 py-3 bg-background border-2 border-foreground/10 rounded-xl font-body text-foreground text-sm focus:border-accent focus:outline-none transition-colors mb-4 resize-none"
-              placeholder="Describe the reason..." autoFocus />
-          )}
+          <textarea value={voidNote} onChange={e => setVoidNote(e.target.value)} maxLength={200} rows={2}
+            className="w-full px-4 py-3 bg-background border-2 border-foreground/10 rounded-xl font-body text-foreground text-sm focus:border-accent focus:outline-none transition-colors mb-4 resize-none"
+            placeholder="Optional note..." />
 
           <button onClick={handleReasonSubmit} disabled={!finalReason}
             className="w-full h-14 bg-pos-gold text-primary rounded-xl font-display font-bold text-lg active:scale-[0.97] transition-transform disabled:opacity-30">

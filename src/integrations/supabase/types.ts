@@ -86,6 +86,39 @@ export type Database = {
         }
         Relationships: []
       }
+      day_close_log: {
+        Row: {
+          branch_id: string
+          close_date: string
+          closed_by: string
+          created_at: string
+          id: string
+          is_reopened: boolean
+          reopened_at: string | null
+          reopened_by: string | null
+        }
+        Insert: {
+          branch_id?: string
+          close_date?: string
+          closed_by: string
+          created_at?: string
+          id?: string
+          is_reopened?: boolean
+          reopened_at?: string | null
+          reopened_by?: string | null
+        }
+        Update: {
+          branch_id?: string
+          close_date?: string
+          closed_by?: string
+          created_at?: string
+          id?: string
+          is_reopened?: boolean
+          reopened_at?: string | null
+          reopened_by?: string | null
+        }
+        Relationships: []
+      }
       discount_types: {
         Row: {
           created_at: string
@@ -348,6 +381,62 @@ export type Database = {
           },
         ]
       }
+      order_slips: {
+        Row: {
+          branch_id: string
+          cashier_name: string | null
+          created_at: string
+          device_id: string
+          id: string
+          sale_id: string | null
+          slip_number: string
+          status: string
+          total: number
+          void_by: string | null
+          void_note: string | null
+          void_reason: string | null
+          void_timestamp: string | null
+        }
+        Insert: {
+          branch_id?: string
+          cashier_name?: string | null
+          created_at?: string
+          device_id?: string
+          id?: string
+          sale_id?: string | null
+          slip_number: string
+          status?: string
+          total?: number
+          void_by?: string | null
+          void_note?: string | null
+          void_reason?: string | null
+          void_timestamp?: string | null
+        }
+        Update: {
+          branch_id?: string
+          cashier_name?: string | null
+          created_at?: string
+          device_id?: string
+          id?: string
+          sale_id?: string | null
+          slip_number?: string
+          status?: string
+          total?: number
+          void_by?: string | null
+          void_note?: string | null
+          void_reason?: string | null
+          void_timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_slips_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "completed_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_transactions: {
         Row: {
           actual_date: string
@@ -492,6 +581,33 @@ export type Database = {
           transaction_id?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      reprint_log: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          reason: string
+          slip_number: string
+          supervisor: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason: string
+          slip_number: string
+          supervisor: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason?: string
+          slip_number?: string
+          supervisor?: string
         }
         Relationships: []
       }
