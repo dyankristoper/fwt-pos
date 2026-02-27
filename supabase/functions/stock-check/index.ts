@@ -20,16 +20,17 @@ Deno.serve(async (req) => {
     const { location_id, items } = body;
 
     if (!location_id || !items?.length) {
-      return new Response(
-        JSON.stringify({ status: "FAILED", message: "Missing location_id or items" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ status: "FAILED", message: "Missing location_id or items" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Map sku_code → sku_id to match FWTeam App's expected field name
-    const mappedItems = (items as { sku_code?: string; sku_id?: string; quantity: number }[]).map(
-      (i) => ({ sku_id: i.sku_code || i.sku_id, quantity: i.quantity })
-    );
+    const mappedItems = (items as { sku_code?: string; sku_id?: string; quantity: number }[]).map((i) => ({
+      sku_id: i.sku_code || i.sku_id,
+      quantity: i.quantity,
+    }));
 
     const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/stock-check`, {
       method: "POST",
@@ -49,9 +50,9 @@ Deno.serve(async (req) => {
   } catch (error: unknown) {
     console.error("stock-check error:", error);
     const msg = error instanceof Error ? error.message : "Unknown error";
-    return new Response(
-      JSON.stringify({ status: "FAILED", message: msg }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ status: "FAILED", message: msg }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
