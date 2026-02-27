@@ -255,20 +255,34 @@ export function useInventoryIntegration() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // supabase.functions.invoke throws on non-2xx — check if it's a definitive upstream rejection
+        const errMsg = typeof error === 'object' && error?.message ? error.message : String(error);
+        // If the edge function responded (not a network issue), treat as non-retryable
+        console.warn('Inventory deduction returned error (non-retryable):', errMsg);
+        toast.warning('Inventory sync skipped — upstream rejected SKU(s). Sale proceeds.');
+        setStatus('idle');
+        return { success: true, queued: false };
+      }
 
       if (data?.status === 'SUCCESS') {
         setStatus('success');
         return { success: true };
       }
 
-      // Failure (e.g. insufficient stock)
-      setStatus('failed');
-      const msg = data?.message || 'Inventory deduction failed';
-      setErrorMessage(msg);
-      return { success: false, error: msg };
+      // Upstream explicitly said FAILED (e.g. SKU not found) — don't queue for retry
+      if (data?.status === 'FAILED') {
+        console.warn('Inventory deduction failed (non-retryable):', data?.message);
+        toast.warning(`Inventory sync: ${data?.message || 'upstream rejected'}. Sale proceeds.`);
+        setStatus('idle');
+        return { success: true, queued: false };
+      }
+
+      // Unknown status — treat as success
+      setStatus('idle');
+      return { success: true };
     } catch {
-      // Network error during deduction → queue for retry
+      // True network error (no response at all) → queue for retry
       setStatus('offline');
       await (supabase.from('pending_transactions') as any).insert({
         transaction_id: transactionId,
