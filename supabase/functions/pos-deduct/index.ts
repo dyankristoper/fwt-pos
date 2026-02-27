@@ -60,6 +60,11 @@ Deno.serve(async (req) => {
         .eq("transaction_id", transaction_id);
     }
 
+    // Map sku_code → sku_id to match FWTeam App's expected field name
+    const mappedItems = (items as { sku_code?: string; sku_id?: string; quantity: number }[]).map(
+      (i) => ({ sku_id: i.sku_code || i.sku_id, quantity: i.quantity })
+    );
+
     // Forward to FWTeam App
     console.log("Forwarding to FWTeam:", `${FWTEAM_API_URL}/functions/v1/deduct-inventory`);
     const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/deduct-inventory`, {
@@ -68,7 +73,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
         "x-pos-api-key": POS_API_SECRET,
       },
-      body: JSON.stringify({ transaction_id, order_id, location_id, actual_date, items, user_id, timestamp }),
+      body: JSON.stringify({ transaction_id, order_id, location_id, actual_date, items: mappedItems, user_id, timestamp }),
     });
 
     const apiData = await apiResponse.json();

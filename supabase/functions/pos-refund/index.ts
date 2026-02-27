@@ -52,6 +52,11 @@ Deno.serve(async (req) => {
       status: "PENDING",
     });
 
+    // Map sku_code → sku_id to match FWTeam App's expected field name
+    const mappedItems = (items as { sku_code?: string; sku_id?: string; quantity: number }[]).map(
+      (i: any) => ({ sku_id: i.sku_code || i.sku_id, quantity: i.quantity })
+    );
+
     const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/refund-inventory`, {
       method: "POST",
       headers: {
@@ -59,15 +64,13 @@ Deno.serve(async (req) => {
         "x-pos-api-key": POS_API_SECRET,
       },
       body: JSON.stringify({
-        transaction_id,
-        original_order_id,
-        refund_type,
+        refund_transaction_id: transaction_id,
+        original_transaction_id: original_order_id,
         location_id: location_id || "DEFAULT",
-        items,
+        actual_date: new Date().toISOString().slice(0, 10),
+        items: mappedItems,
         reason,
-        approved_by,
         user_id: user_id || "POS",
-        timestamp: new Date().toISOString(),
       }),
     });
 

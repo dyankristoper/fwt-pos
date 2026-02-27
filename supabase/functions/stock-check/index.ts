@@ -26,13 +26,18 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Map sku_code → sku_id to match FWTeam App's expected field name
+    const mappedItems = (items as { sku_code?: string; sku_id?: string; quantity: number }[]).map(
+      (i) => ({ sku_id: i.sku_code || i.sku_id, quantity: i.quantity })
+    );
+
     const apiResponse = await fetch(`${FWTEAM_API_URL}/functions/v1/stock-check`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-pos-api-key": POS_API_SECRET,
       },
-      body: JSON.stringify({ location_id, items }),
+      body: JSON.stringify({ location_id, items: mappedItems }),
     });
 
     const apiData = await apiResponse.json();
