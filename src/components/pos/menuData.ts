@@ -33,8 +33,8 @@ export const menuItems: MenuItem[] = [
 
   // Beverages
   { id: 'iced-tea', sku_code: 'FW-MENU-BEV-0001', name: 'FWTea (460ml)', price: 80, category: 'beverages', kcal: 190 },
-  { id: 'coke-regular', sku_code: 'FW-MENU-BEV-0002', name: 'Coke Regular', price: 75, category: 'beverages', kcal: 140 },
-  { id: 'sprite', sku_code: 'FW-MENU-BEV-0004', name: 'Sprite', price: 75, category: 'beverages', kcal: 140 },
+  { id: 'coke-regular', sku_code: 'C0KE', name: 'Coke Regular', price: 75, category: 'beverages', kcal: 140 },
+  { id: 'sprite', sku_code: 'SPR1TE', name: 'Sprite', price: 75, category: 'beverages', kcal: 140 },
   { id: 'royal', sku_code: 'FW-MENU-BEV-0005', name: 'Royal', price: 75, category: 'beverages', kcal: 140 },
   { id: 'water', sku_code: 'FW-MENU-BEV-0003', name: 'Bottled Water (500ml)', price: 30, category: 'beverages', kcal: 0 },
 ];
