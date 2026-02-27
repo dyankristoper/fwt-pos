@@ -20,7 +20,7 @@ export interface InvoiceData {
   isVoid?: boolean;
 }
 
-const CHAR_WIDTH = 6.5;
+const CHAR_WIDTH = 7.4;
 const LINE_HEIGHT = 16;
 const PADDING = 16;
 const COLS = 48;
