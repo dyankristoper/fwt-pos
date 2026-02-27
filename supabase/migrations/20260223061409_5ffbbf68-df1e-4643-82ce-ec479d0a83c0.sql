@@ -81,7 +81,7 @@ $$;
 -- Seed branch config, VAT mode, and control number settings
 INSERT INTO public.pos_settings (setting_key, setting_value)
 VALUES
-  ('branch_config', '{"code": "QC01", "name": "Quezon City Branch", "legal_name": "Featherweight Chicken Inc.", "address": "123 Main St, Quezon City", "tin": "000-000-000-000"}'::jsonb),
+  ('branch_config', '{"code": "QC01", "name": "Quezon City Branch", "legal_name": "Featherweight Chicken Inc.", "address": "1610 Quezon Avenue, Quezon City", "tin": "000-000-000-000"}'::jsonb),
   ('vat_mode', '{"mode": "inclusive"}'::jsonb),
   ('control_number', '{"current": 0}'::jsonb)
 ON CONFLICT (setting_key) DO NOTHING;
