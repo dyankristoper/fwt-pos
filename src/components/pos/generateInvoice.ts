@@ -16,6 +16,8 @@ export interface InvoiceData {
   vatBreakdown: VatBreakdown;
   serviceChargePercent: number;
   paymentMethod: string;
+  isReprint?: boolean;
+  isVoid?: boolean;
 }
 
 const CHAR_WIDTH = 6.5;
@@ -40,6 +42,16 @@ function divider(): string { return '-'.repeat(COLS); }
 export function buildInvoiceText(data: InvoiceData): string {
   const lines: string[] = [];
   const { branchConfig: bc, vatBreakdown: vb } = data;
+
+  // Reprint / Void labels
+  if (data.isReprint) {
+    lines.push(center('*** REPRINT COPY ***'));
+    lines.push('');
+  }
+  if (data.isVoid) {
+    lines.push(center('*** VOID ***'));
+    lines.push('');
+  }
 
   // Header
   lines.push(center(bc.legal_name.toUpperCase()));
@@ -136,6 +148,16 @@ export function buildInvoiceText(data: InvoiceData): string {
   lines.push(center('BIR accreditation details)'));
   lines.push('');
   lines.push(kv('Control #:', String(data.controlNumber).padStart(6, '0')));
+
+  if (data.isVoid) {
+    lines.push('');
+    lines.push(center('*** VOID ***'));
+  }
+  if (data.isReprint) {
+    lines.push('');
+    lines.push(center('*** REPRINT COPY ***'));
+  }
+
   lines.push('');
   lines.push(center('Thank you!'));
 

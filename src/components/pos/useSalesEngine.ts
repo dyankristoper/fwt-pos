@@ -157,3 +157,53 @@ export async function saveSale(params: {
 
   if (error) throw error;
 }
+
+export async function saveSlipRecord(slip: {
+  slipNumber: string;
+  saleId?: string;
+  branchId: string;
+  deviceId: string;
+  cashierName: string;
+  total: number;
+}) {
+  const { error } = await supabase.from('order_slips').insert({
+    slip_number: slip.slipNumber,
+    sale_id: slip.saleId,
+    branch_id: slip.branchId,
+    device_id: slip.deviceId,
+    cashier_name: slip.cashierName,
+    total: slip.total,
+    status: 'ACTIVE',
+  } as any);
+  if (error) console.error('Failed to save slip record:', error);
+}
+
+export async function updateSlipStatus(slipNumber: string, voidData: {
+  reason: string;
+  note?: string;
+  approvedBy: string;
+}) {
+  const { error } = await supabase.from('order_slips').update({
+    status: 'VOID',
+    void_reason: voidData.reason,
+    void_note: voidData.note || null,
+    void_by: voidData.approvedBy,
+    void_timestamp: new Date().toISOString(),
+  } as any).eq('slip_number', slipNumber);
+  if (error) console.error('Failed to update slip status:', error);
+}
+
+export async function logReprint(record: {
+  slipNumber: string;
+  reason: string;
+  note?: string;
+  supervisor: string;
+}) {
+  const { error } = await supabase.from('reprint_log').insert({
+    slip_number: record.slipNumber,
+    reason: record.reason,
+    note: record.note || null,
+    supervisor: record.supervisor,
+  } as any);
+  if (error) console.error('Failed to log reprint:', error);
+}

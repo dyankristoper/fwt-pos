@@ -4,10 +4,11 @@ import { useDailySummary } from '@/components/pos/useDailySummary';
 import { usePrinter } from '@/components/pos/print/usePrinter';
 import { useInventoryIntegration } from '@/components/pos/useInventoryIntegration';
 import { useServiceCharge } from '@/components/pos/useServiceCharge';
+import { useSlipManagement } from '@/components/pos/useSlipManagement';
 import { ReceiptData } from '@/components/pos/print/escpos';
 import {
   fetchBranchConfig, fetchVatMode, generateOrderSlipNumber,
-  generateControlNumber, calculateVatBreakdown, saveSale,
+  generateControlNumber, calculateVatBreakdown, saveSale, saveSlipRecord,
   BranchConfig, VatBreakdown,
 } from '@/components/pos/useSalesEngine';
 import { downloadInvoice, InvoiceData } from '@/components/pos/generateInvoice';
@@ -23,12 +24,14 @@ import SupervisorManagement from '@/components/pos/SupervisorManagement';
 import VoidRefundFlow from '@/components/pos/VoidRefundFlow';
 import ItemDiscountFlow from '@/components/pos/ItemDiscountFlow';
 import PrePaymentModal from '@/components/pos/PrePaymentModal';
+import ReprintFlow from '@/components/pos/ReprintFlow';
+import SlipSummaryDashboard from '@/components/pos/SlipSummaryDashboard';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
-import { BarChart3, Printer, Shield, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { BarChart3, Printer, Shield, Wifi, WifiOff, AlertTriangle, FileText, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
-type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors';
+type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors' | 'slip-summary';
 
 const POS = () => {
   const order = useOrderState();
@@ -41,11 +44,15 @@ const POS = () => {
   const [addOnPromptItemId, setAddOnPromptItemId] = useState<string | null>(null);
   const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null | 'search'>(null);
   const [itemDiscountTarget, setItemDiscountTarget] = useState<OrderItem | null>(null);
+  const [reprintOrder, setReprintOrder] = useState<CompletedOrder | null>(null);
 
   // Branch config + VAT mode loaded on mount
   const [branchConfig, setBranchConfig] = useState<BranchConfig | null>(null);
   const [vatMode, setVatMode] = useState<'inclusive' | 'exclusive'>('inclusive');
   const loadedRef = useRef(false);
+
+  // Day-close state
+  const slipMgmt = useSlipManagement(branchConfig?.code || 'QC01');
 
   useEffect(() => {
     if (loadedRef.current) return;
@@ -86,8 +93,12 @@ const POS = () => {
   // Phase 4: Pre-payment modal → payment
   const handleProceedToPayment = useCallback(() => {
     if (order.items.length === 0) return;
+    if (slipMgmt.dayClose.isClosed) {
+      toast.error('Day is closed — no new transactions allowed');
+      return;
+    }
     setView('pre-payment');
-  }, [order.items.length]);
+  }, [order.items.length, slipMgmt.dayClose.isClosed]);
 
   const handleContinueToPayment = useCallback(() => setView('payment'), []);
   const handleEditOrder = useCallback(() => setView('menu'), []);
@@ -97,6 +108,12 @@ const POS = () => {
     async (method: PaymentMethod) => {
       if (!branchConfig) {
         toast.error('Branch config not loaded');
+        return;
+      }
+
+      if (slipMgmt.dayClose.isClosed) {
+        toast.error('Day is closed — cannot complete transaction');
+        setView('menu');
         return;
       }
 
@@ -125,10 +142,11 @@ const POS = () => {
       } catch (err) {
         toast.error('Failed to generate order/control numbers');
         console.error(err);
-        // Still proceed, use fallback
         const now = new Date();
-        const dateStr = `${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getFullYear()).slice(-2)}`;
-        orderSlipNumber = `${dateStr}-0000-${branchConfig.code}`;
+        const yy = String(now.getFullYear()).slice(-2);
+        const mm = String(now.getMonth()+1).padStart(2,'0');
+        const dd = String(now.getDate()).padStart(2,'0');
+        orderSlipNumber = `OS-${branchConfig.code}-${yy}${mm}${dd}-0000`;
         controlNumber = 0;
       }
 
@@ -149,6 +167,15 @@ const POS = () => {
         console.error('Failed to save sale:', err);
         toast.error('Sale record failed to save');
       }
+
+      // 3b. Save slip record
+      saveSlipRecord({
+        slipNumber: orderSlipNumber,
+        branchId: branchConfig.code,
+        deviceId: 'TAB-A8-01',
+        cashierName: 'ANA',
+        total: payableTotal,
+      });
 
       // Track in daily summary
       completeOrder(order.items, payableTotal, method, orderSlipNumber);
@@ -213,7 +240,7 @@ const POS = () => {
       order.clearOrder();
       setView('menu');
     },
-    [order, completeOrder, printer, inventory, branchConfig, vatBreakdown, payableTotal, serviceCharge, scAmount]
+    [order, completeOrder, printer, inventory, branchConfig, vatBreakdown, payableTotal, serviceCharge, scAmount, slipMgmt.dayClose.isClosed]
   );
 
   const handleClearOrder = useCallback(() => {
@@ -235,6 +262,68 @@ const POS = () => {
     addVoidRefund({ orderId: completedOrd.orderSlipNumber, type, amount: completedOrd.total });
     setVoidRefundOrder(null);
   }, [addVoidRefund]);
+
+  const handleReprint = useCallback((completedOrder: CompletedOrder) => {
+    setReprintOrder(completedOrder);
+  }, []);
+
+  const handleReprintComplete = useCallback((completedOrder: CompletedOrder, isReprint: boolean) => {
+    if (!branchConfig) return;
+    setReprintOrder(null);
+
+    // Print 3 copies with REPRINT COPY label
+    const now = new Date();
+    const receiptData: ReceiptData = {
+      storeName: branchConfig.legal_name,
+      branchName: branchConfig.name,
+      orderSlipNumber: completedOrder.orderSlipNumber,
+      date: now.toISOString().slice(0, 10),
+      time: now.toTimeString().slice(0, 5),
+      cashier: 'ANA',
+      items: completedOrder.items.map(item => {
+        const discAmt = calculateItemDiscount(item);
+        return {
+          qty: item.quantity,
+          name: item.menuItem.name,
+          amount: calculateItemFinal(item),
+          discountLabel: item.discount
+            ? `${item.discount.discount_name || item.discount.reason} -₱${discAmt.toFixed(2)}`
+            : undefined,
+          idNumber: item.discount?.id_number,
+        };
+      }),
+      subtotal: completedOrder.total,
+      total: completedOrder.total,
+      paymentMethod: completedOrder.paymentMethod,
+      isReprint: true,
+    };
+
+    for (let i = 0; i < 3; i++) {
+      printer.printReceipt(receiptData);
+    }
+
+    // Also download invoice with REPRINT COPY label
+    try {
+      const invoiceData: InvoiceData = {
+        branchConfig,
+        orderSlipNumber: completedOrder.orderSlipNumber,
+        controlNumber: 0,
+        date: now.toISOString().slice(0, 10),
+        time: now.toTimeString().slice(0, 5),
+        cashier: 'ANA',
+        items: completedOrder.items,
+        vatBreakdown: calculateVatBreakdown(completedOrder.items, 0, vatMode),
+        serviceChargePercent: 0,
+        paymentMethod: completedOrder.paymentMethod,
+        isReprint: true,
+      };
+      downloadInvoice(invoiceData);
+    } catch (err) {
+      console.error('Reprint invoice failed:', err);
+    }
+
+    toast.success('Reprint copies generated');
+  }, [branchConfig, printer, vatMode]);
 
   const handleItemDiscount = useCallback((item: OrderItem) => { setItemDiscountTarget(item); }, []);
 
@@ -261,6 +350,11 @@ const POS = () => {
           <img src={logoEmblem} alt="FWT" className="h-9 w-9 rounded-full object-cover border-2 border-primary-foreground/20" />
           <span className="font-display text-xl font-bold text-primary-foreground">Featherweight Chicken</span>
           <span className="font-display text-xs text-primary-foreground/40 hidden sm:block uppercase tracking-widest">POS</span>
+          {slipMgmt.dayClose.isClosed && (
+            <span className="flex items-center gap-1 text-xs font-display font-bold text-accent bg-accent/20 px-2 py-1 rounded-lg">
+              <Lock size={12} /> Day Closed
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div
@@ -292,6 +386,13 @@ const POS = () => {
           >
             <AlertTriangle size={18} />
           </button>
+          <button
+            onClick={() => setView(view === 'slip-summary' ? 'menu' : 'slip-summary')}
+            className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
+            title="Slip Summary"
+          >
+            <FileText size={18} />
+          </button>
           <span className="font-body text-sm text-primary-foreground/50">
             {new Date().toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
           </span>
@@ -307,13 +408,19 @@ const POS = () => {
 
       {/* Main content */}
       {view === 'summary' ? (
-        <DailySummary summary={summary} onBack={() => setView('menu')} onVoidRefund={handleVoidRefund} onZReading={() => setView('z-reading')} />
+        <DailySummary summary={summary} onBack={() => setView('menu')} onVoidRefund={handleVoidRefund} onReprint={handleReprint} onZReading={() => setView('z-reading')} />
       ) : view === 'z-reading' ? (
         <ZReadingReport summary={summary} onBack={() => setView('summary')} />
       ) : view === 'printer-settings' ? (
         <PrinterSettings onBack={() => setView('menu')} />
       ) : view === 'supervisors' ? (
         <SupervisorManagement onBack={() => setView('menu')} />
+      ) : view === 'slip-summary' ? (
+        <SlipSummaryDashboard
+          branchId={branchConfig?.code || 'QC01'}
+          onBack={() => setView('menu')}
+          onDayCloseChange={(closed) => slipMgmt.checkDayClose()}
+        />
       ) : (
         <div className="flex-1 flex overflow-hidden">
           <div className="w-[65%] overflow-y-auto bg-background">
@@ -356,6 +463,13 @@ const POS = () => {
           order={voidRefundOrder === 'search' ? undefined : voidRefundOrder}
           onComplete={handleVoidRefundComplete}
           onCancel={() => setVoidRefundOrder(null)}
+        />
+      )}
+      {reprintOrder && (
+        <ReprintFlow
+          order={reprintOrder}
+          onReprint={handleReprintComplete}
+          onCancel={() => setReprintOrder(null)}
         />
       )}
       {itemDiscountTarget && (

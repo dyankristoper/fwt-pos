@@ -75,3 +75,26 @@ export interface DailySummaryData {
   discounts: DiscountRecord[];
   voidRefunds: VoidRefundRecord[];
 }
+
+export interface SlipRecord {
+  id?: string;
+  slipNumber: string;
+  saleId?: string;
+  branchId: string;
+  deviceId: string;
+  cashierName: string;
+  total: number;
+  status: 'ACTIVE' | 'VOID';
+  voidReason?: string;
+  voidNote?: string;
+  voidBy?: string;
+  voidTimestamp?: string;
+  createdAt?: string;
+}
+
+export interface ReprintRecord {
+  slipNumber: string;
+  reason: string;
+  note?: string;
+  supervisor: string;
+}
