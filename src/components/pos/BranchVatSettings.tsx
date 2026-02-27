@@ -116,7 +116,7 @@ const BranchVatSettings = () => {
           onChange={(e) => setBranch({ ...branch, legal_name: e.target.value })}
           maxLength={200}
           className={inputClass}
-          placeholder="Featherweight Chicken Inc."
+          placeholder="Fifth D Fried Chicken Kiosk."
         />
       </div>
 
