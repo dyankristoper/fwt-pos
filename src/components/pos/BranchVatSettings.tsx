@@ -128,7 +128,7 @@ const BranchVatSettings = () => {
           onChange={(e) => setBranch({ ...branch, address: e.target.value })}
           maxLength={300}
           className={inputClass}
-          placeholder="123 Main St, Quezon City"
+          placeholder="1610 Quezon Avenue, Quezon City"
         />
       </div>
 
