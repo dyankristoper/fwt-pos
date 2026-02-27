@@ -29,7 +29,7 @@ export interface VatBreakdown {
 const DEFAULT_BRANCH: BranchConfig = {
   code: "QC01",
   name: "Main Branch",
-  legal_name: "Featherweight Chicken Inc.",
+  legal_name: "Fifth D Fried Chicken Kiosk.",
   address: "1610 Quezon Avenue, Quezon City",
   tin: "000-000-000-000",
 };
