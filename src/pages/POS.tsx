@@ -211,9 +211,10 @@ const POS = () => {
         paymentMethod: method,
       };
 
-      // Print 3 copies
-      for (let i = 0; i < 3; i++) {
-        printer.printReceipt(receiptData);
+      // Print 3 copies with distinct labels
+      const copyLabels = ['KITCHEN', 'COUNTER', 'CUSTOMER'];
+      for (const label of copyLabels) {
+        printer.printReceipt({ ...receiptData, copyLabel: label });
       }
 
       // 5. Generate Sales Invoice PDF (save locally, don't print)
@@ -298,8 +299,9 @@ const POS = () => {
       isReprint: true,
     };
 
-    for (let i = 0; i < 3; i++) {
-      printer.printReceipt(receiptData);
+    const copyLabels = ['KITCHEN', 'COUNTER', 'CUSTOMER'];
+    for (const label of copyLabels) {
+      printer.printReceipt({ ...receiptData, copyLabel: label });
     }
 
     // Also download invoice with REPRINT COPY label
