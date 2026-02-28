@@ -40,11 +40,12 @@ export function renderReceiptToCanvas(data: ReceiptData): HTMLCanvasElement {
 /**
  * Generate filename for receipt PDF/image
  */
-export function generateReceiptFilename(orderNumber: string): string {
+export function generateReceiptFilename(orderNumber: string, copyLabel?: string): string {
   const now = new Date();
   const date = now.toISOString().slice(0, 10).replace(/-/g, '');
   const time = now.toTimeString().slice(0, 5).replace(':', '');
-  return `FWC-${orderNumber}-${date}-${time}`;
+  const suffix = copyLabel ? `-${copyLabel}` : '';
+  return `FWC-${orderNumber}-${date}-${time}${suffix}`;
 }
 
 /**
@@ -52,7 +53,7 @@ export function generateReceiptFilename(orderNumber: string): string {
  */
 export function downloadReceiptImage(data: ReceiptData): void {
   const canvas = renderReceiptToCanvas(data);
-  const filename = generateReceiptFilename(data.orderNumber);
+  const filename = generateReceiptFilename(data.orderNumber, data.copyLabel);
 
   const link = document.createElement('a');
   link.download = `${filename}.png`;

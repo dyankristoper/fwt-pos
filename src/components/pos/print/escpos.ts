@@ -101,6 +101,7 @@ export interface ReceiptData {
   cashReceived?: number;
   change?: number;
   isReprint?: boolean;
+  copyLabel?: string;
 }
 
 /**
