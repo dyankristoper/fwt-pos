@@ -4,6 +4,7 @@
 import { OrderItem } from './types';
 import { calculateItemTotal, calculateItemDiscount, calculateItemFinal } from './useOrderState';
 import { VatBreakdown, BranchConfig } from './useSalesEngine';
+import { shareCanvasAsPNG } from '@/utils/shareFile';
 
 export interface InvoiceData {
   branchConfig: BranchConfig;
@@ -187,12 +188,9 @@ export function renderInvoiceToCanvas(data: InvoiceData): HTMLCanvasElement {
   return canvas;
 }
 
-export function downloadInvoice(data: InvoiceData): void {
+export async function downloadInvoice(data: InvoiceData): Promise<void> {
   const canvas = renderInvoiceToCanvas(data);
-  const filename = `SalesInvoice-${data.orderSlipNumber}`;
-
-  const link = document.createElement('a');
-  link.download = `${filename}.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  const controlStr = String(data.controlNumber).padStart(6, '0');
+  const filename = `InternalSI-SI-${controlStr}.png`;
+  await shareCanvasAsPNG(canvas, filename);
 }
