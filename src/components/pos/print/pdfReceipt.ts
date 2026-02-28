@@ -4,6 +4,7 @@
  */
 
 import { buildReceiptText, ReceiptData } from './escpos';
+import { shareCanvasAsPNG } from '@/utils/shareFile';
 
 const CHAR_WIDTH = 7.2;   // px per character in monospace
 const LINE_HEIGHT = 16;   // px per line
@@ -45,20 +46,16 @@ export function generateReceiptFilename(orderNumber: string, copyLabel?: string)
   const date = now.toISOString().slice(0, 10).replace(/-/g, '');
   const time = now.toTimeString().slice(0, 5).replace(':', '');
   const suffix = copyLabel ? `-${copyLabel}` : '';
-  return `FWC-${orderNumber}-${date}-${time}${suffix}`;
+  return `PrintQueue-${orderNumber}-${date}-${time}${suffix}`;
 }
 
 /**
- * Download receipt as PNG image
+ * Share receipt as PNG image via Android Share Intent (falls back to download)
  */
-export function downloadReceiptImage(data: ReceiptData): void {
+export async function downloadReceiptImage(data: ReceiptData): Promise<void> {
   const canvas = renderReceiptToCanvas(data);
   const filename = generateReceiptFilename(data.orderNumber, data.copyLabel);
-
-  const link = document.createElement('a');
-  link.download = `${filename}.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  await shareCanvasAsPNG(canvas, `${filename}.png`);
 }
 
 /**

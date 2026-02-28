@@ -70,19 +70,19 @@ export function usePrinter() {
   }, []);
 
   /**
-   * Print a receipt (thermal + PDF save)
+   * Print a receipt (thermal + share/save PNG)
    */
-  const printReceipt = useCallback((data: ReceiptData) => {
+  const printReceipt = useCallback(async (data: ReceiptData) => {
     const currentSettings = settingsRef.current;
 
-    // Always save PDF/image
+    // Always share/save PNG
     try {
-      downloadReceiptImage(data);
+      await downloadReceiptImage(data);
     } catch (err) {
-      console.warn('PDF save failed:', err);
+      console.warn('Share/save failed:', err);
     }
 
-    // Thermal print if connected and auto-print is enabled (or manually triggered)
+    // Thermal print if connected
     if (bluetoothPrinter.status.connected) {
       const bytes = buildReceiptBytes(data);
       printQueue.enqueue(bytes, currentSettings.copies);
