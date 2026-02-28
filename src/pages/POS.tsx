@@ -11,7 +11,7 @@ import {
   generateControlNumber, calculateVatBreakdown, saveSale, saveSlipRecord,
   BranchConfig, VatBreakdown,
 } from '@/components/pos/useSalesEngine';
-import { downloadInvoice, InvoiceData } from '@/components/pos/generateInvoice';
+import { downloadInvoice, InvoiceData, renderInvoiceToCanvas } from '@/components/pos/generateInvoice';
 import MenuPanel from '@/components/pos/MenuPanel';
 import OrderPanel from '@/components/pos/OrderPanel';
 import ComboPrompt from '@/components/pos/ComboPrompt';
@@ -26,6 +26,7 @@ import ItemDiscountFlow from '@/components/pos/ItemDiscountFlow';
 import PrePaymentModal from '@/components/pos/PrePaymentModal';
 import ReprintFlow from '@/components/pos/ReprintFlow';
 import SlipSummaryDashboard from '@/components/pos/SlipSummaryDashboard';
+import ManualPrintModal from '@/components/pos/ManualPrintModal';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
 import { BarChart3, Printer, Shield, Wifi, WifiOff, AlertTriangle, FileText, Lock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,6 +46,7 @@ const POS = () => {
   const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null | 'search'>(null);
   const [itemDiscountTarget, setItemDiscountTarget] = useState<OrderItem | null>(null);
   const [reprintOrder, setReprintOrder] = useState<CompletedOrder | null>(null);
+  const [printModalData, setPrintModalData] = useState<{ receipt: ReceiptData; invoice: InvoiceData } | null>(null);
 
   // Branch config + VAT mode loaded on mount
   const [branchConfig, setBranchConfig] = useState<BranchConfig | null>(null);
@@ -211,33 +213,24 @@ const POS = () => {
         paymentMethod: method,
       };
 
-      // Print 3 copies with distinct labels
-      const copyLabels = ['KITCHEN', 'COUNTER', 'CUSTOMER'];
-      for (const label of copyLabels) {
-        printer.printReceipt({ ...receiptData, copyLabel: label });
-      }
+      // 5. Build invoice data
+      const invoiceData: InvoiceData = {
+        branchConfig,
+        orderSlipNumber,
+        controlNumber,
+        date: now.toISOString().slice(0, 10),
+        time: now.toTimeString().slice(0, 5),
+        cashier: 'ANA',
+        items: order.items,
+        vatBreakdown,
+        serviceChargePercent: serviceCharge.config.percent,
+        paymentMethod: method,
+      };
 
-      // 5. Generate Sales Invoice PDF (save locally, don't print)
-      try {
-        const invoiceData: InvoiceData = {
-          branchConfig,
-          orderSlipNumber,
-          controlNumber,
-          date: now.toISOString().slice(0, 10),
-          time: now.toTimeString().slice(0, 5),
-          cashier: 'ANA',
-          items: order.items,
-          vatBreakdown,
-          serviceChargePercent: serviceCharge.config.percent,
-          paymentMethod: method,
-        };
-        downloadInvoice(invoiceData);
-      } catch (err) {
-        console.error('Invoice generation failed:', err);
-        toast.error('Invoice PDF generation failed');
-      }
+      // 6. Show manual print modal (no auto-loop)
+      setPrintModalData({ receipt: receiptData, invoice: invoiceData });
 
-      // 6. Clear and reset
+      // 7. Clear order and reset view
       order.clearOrder();
       setView('menu');
     },
@@ -299,33 +292,24 @@ const POS = () => {
       isReprint: true,
     };
 
-    const copyLabels = ['KITCHEN', 'COUNTER', 'CUSTOMER'];
-    for (const label of copyLabels) {
-      printer.printReceipt({ ...receiptData, copyLabel: label });
-    }
+    const invoiceData: InvoiceData = {
+      branchConfig,
+      orderSlipNumber: completedOrder.orderSlipNumber,
+      controlNumber: 0,
+      date: now.toISOString().slice(0, 10),
+      time: now.toTimeString().slice(0, 5),
+      cashier: 'ANA',
+      items: completedOrder.items,
+      vatBreakdown: calculateVatBreakdown(completedOrder.items, 0, vatMode),
+      serviceChargePercent: 0,
+      paymentMethod: completedOrder.paymentMethod,
+      isReprint: true,
+    };
 
-    // Also download invoice with REPRINT COPY label
-    try {
-      const invoiceData: InvoiceData = {
-        branchConfig,
-        orderSlipNumber: completedOrder.orderSlipNumber,
-        controlNumber: 0,
-        date: now.toISOString().slice(0, 10),
-        time: now.toTimeString().slice(0, 5),
-        cashier: 'ANA',
-        items: completedOrder.items,
-        vatBreakdown: calculateVatBreakdown(completedOrder.items, 0, vatMode),
-        serviceChargePercent: 0,
-        paymentMethod: completedOrder.paymentMethod,
-        isReprint: true,
-      };
-      downloadInvoice(invoiceData);
-    } catch (err) {
-      console.error('Reprint invoice failed:', err);
-    }
-
-    toast.success('Reprint copies generated');
-  }, [branchConfig, printer, vatMode]);
+    // Show manual print modal instead of auto-loop
+    setPrintModalData({ receipt: receiptData, invoice: invoiceData });
+    toast.success('Reprint ready — use print modal');
+  }, [branchConfig, vatMode]);
 
   const handleItemDiscount = useCallback((item: OrderItem) => { setItemDiscountTarget(item); }, []);
 
@@ -491,6 +475,13 @@ const POS = () => {
           totalAmountDue={payableTotal}
           onContinueToPayment={handleContinueToPayment}
           onEditOrder={handleEditOrder}
+        />
+      )}
+      {printModalData && (
+        <ManualPrintModal
+          receiptData={printModalData.receipt}
+          invoiceData={printModalData.invoice}
+          onClose={() => setPrintModalData(null)}
         />
       )}
     </div>
