@@ -49,6 +49,7 @@ const POS = () => {
   const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null | 'search'>(null);
   const [itemDiscountTarget, setItemDiscountTarget] = useState<OrderItem | null>(null);
   const [reprintOrder, setReprintOrder] = useState<CompletedOrder | null>(null);
+  const [printerWarningDismissed, setPrinterWarningDismissed] = useState(false);
   // printModalData removed — now using auto-print ESC/POS
 
   // Branch config + VAT mode loaded on mount
@@ -321,23 +322,31 @@ const POS = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background touch-manipulation select-none" onContextMenu={e => e.preventDefault()}>
-      {/* Printer not connected blocker */}
-      {!printer.status.connected && view !== 'printer-settings' && (
-        <div className="fixed inset-0 z-50 bg-background/95 flex flex-col items-center justify-center gap-6 p-8">
-          <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center animate-pulse">
-            <Printer size={40} className="text-destructive" />
+      {/* Printer not connected warning banner */}
+      {!printer.status.connected && view !== 'printer-settings' && !printerWarningDismissed && (
+        <div className="fixed inset-0 z-50 bg-background/90 flex flex-col items-center justify-center gap-6 p-8">
+          <div className="w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center">
+            <AlertTriangle size={40} className="text-accent" />
           </div>
           <h2 className="font-display text-2xl font-bold text-foreground text-center">Printer Not Connected</h2>
-          <p className="font-body text-foreground/60 text-center max-w-sm text-sm">
-            POS is disabled until a thermal printer is connected. Please connect your printer to proceed.
+          <p className="font-body text-foreground/60 text-center max-w-md text-sm leading-relaxed">
+            Printer not working? Please ensure you have a manual order slip ready before proceeding. You may also contact Tech Support for assistance.
           </p>
-          <button
-            onClick={() => setView('printer-settings')}
-            className="h-14 px-8 bg-primary text-primary-foreground rounded-xl font-display font-bold text-lg flex items-center gap-3 active:scale-[0.97] transition-transform"
-          >
-            <Printer size={20} />
-            Connect Printer
-          </button>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <button
+              onClick={() => setView('printer-settings')}
+              className="h-14 w-full bg-primary text-primary-foreground rounded-xl font-display font-bold text-lg flex items-center justify-center gap-3 active:scale-[0.97] transition-transform"
+            >
+              <Printer size={20} />
+              Connect Printer
+            </button>
+            <button
+              onClick={() => setPrinterWarningDismissed(true)}
+              className="h-12 w-full bg-foreground/10 text-foreground rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+            >
+              Continue Without Printer
+            </button>
+          </div>
         </div>
       )}
 
