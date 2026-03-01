@@ -215,7 +215,7 @@ export function buildReceiptText(data: ReceiptData): string {
     lines.push("");
   }
 
-  lines.push(center(data.storeName || "FEATHERWEIGHT CHICKEN"));
+  lines.push(center(data.storeName || "FIFTH D FRIED CHICKEN KIOSK"));
   if (data.branchName) lines.push(center(data.branchName));
   lines.push(divider());
   lines.push(center("ORDER SLIP"));
