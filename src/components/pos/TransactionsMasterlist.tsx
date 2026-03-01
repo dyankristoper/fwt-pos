@@ -127,6 +127,15 @@ const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlist
 
   const fmt = (n: number | null | undefined) => (n ?? 0).toFixed(2);
 
+  const getDiscountTypes = (s: SaleRow): string => {
+    const discounts = Array.isArray(s.line_discounts) ? s.line_discounts : [];
+    const names = discounts
+      .map((d: any) => d.discount?.discount_name || d.discount?.reason || '')
+      .filter(Boolean);
+    const unique = [...new Set(names)];
+    return unique.length > 0 ? unique.join(', ') : '—';
+  };
+
   // Totals
   const totals = sales.reduce((acc, s) => ({
     gross: acc.gross + s.gross_sales,
@@ -175,6 +184,7 @@ const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlist
                 <TableHead className="font-display text-xs">Slip #</TableHead>
                 <TableHead className="font-display text-xs text-right">Gross</TableHead>
                 <TableHead className="font-display text-xs text-right">Disc</TableHead>
+                <TableHead className="font-display text-xs">Disc Type</TableHead>
                 <TableHead className="font-display text-xs text-right">VATable</TableHead>
                 <TableHead className="font-display text-xs text-right">VAT</TableHead>
                 <TableHead className="font-display text-xs text-right">Exempt</TableHead>
@@ -192,6 +202,7 @@ const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlist
                   <TableCell className="font-display text-xs font-semibold">{s.order_slip_number}</TableCell>
                   <TableCell className="font-body text-xs text-right">{fmt(s.gross_sales)}</TableCell>
                   <TableCell className="font-body text-xs text-right">{fmt(s.discount_total)}</TableCell>
+                  <TableCell className="font-body text-xs">{getDiscountTypes(s)}</TableCell>
                   <TableCell className="font-body text-xs text-right">{fmt(s.vatable_sales)}</TableCell>
                   <TableCell className="font-body text-xs text-right">{fmt(s.vat_amount)}</TableCell>
                   <TableCell className="font-body text-xs text-right">{fmt(s.vat_exempt_sales)}</TableCell>
@@ -212,6 +223,7 @@ const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlist
                 <TableCell className="font-display text-xs" colSpan={2}>TOTALS ({sales.length} txns)</TableCell>
                 <TableCell className="font-display text-xs text-right">{totals.gross.toFixed(2)}</TableCell>
                 <TableCell className="font-display text-xs text-right">{totals.disc.toFixed(2)}</TableCell>
+                <TableCell></TableCell>
                 <TableCell className="font-display text-xs text-right">{totals.vatable.toFixed(2)}</TableCell>
                 <TableCell className="font-display text-xs text-right">{totals.vat.toFixed(2)}</TableCell>
                 <TableCell className="font-display text-xs text-right">{totals.exempt.toFixed(2)}</TableCell>
