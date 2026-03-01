@@ -1,21 +1,191 @@
+```id="fwc-pos-manual-cutter-2copy-internal-si-save-only"
 
+FWC POS — Optimize Manual Cutter Workflow (2 Copies + Internal SI Save Only)
 
-## Plan: Remove Auto Inventory Deduction
+⚠️ IMPORTANT:
 
-### What changes
+This modifies an existing working POS.
 
-Remove the automatic inventory deduction call that fires after every sale. The online/offline indicator and the `useInventoryIntegration` hook will be fully removed from the POS page.
+Do NOT rebuild the system.
 
-### Files to modify
+Do NOT alter VAT computation.
 
-1. **`src/pages/POS.tsx`**:
-   - Remove `import { useInventoryIntegration }` and the `inventory` hook instantiation (line 5, 41)
-   - Remove the inventory deduction block in `handleCompletePayment` (lines 122-134): the `deductInventory` call, its success/failure check, and the queued toast
-   - Remove the online/offline status indicator in the header bar (lines 346-353)
-   - Remove `Wifi`/`WifiOff` from lucide-react imports if no longer used
+Do NOT modify slip numbering.
 
-2. **No other files deleted** — `useInventoryIntegration.ts` and edge functions (`pos-deduct`, `stock-check`) remain in the codebase in case you want to re-enable or use them manually later.
+Do NOT modify supervisor approval logic.
 
-### What is NOT changed
-- Sale logic, VAT computation, numbering, slip structure, printing, supervisor approval, audit logging — all untouched.
+Only optimize printing workflow to reduce processing time and printer risk.
 
+----------------------------------------------------
+
+OBJECTIVE
+
+----------------------------------------------------
+
+Reduce print load and stabilize manual cutter process by:
+
+1) Printing ONLY TWO (2) order slip copies:
+
+   - Store Copy
+
+   - Customer Copy
+
+2) DO NOT print Internal Sales Invoice.
+
+   - Generate it
+
+   - Save it internally (download only)
+
+   - Do NOT share it to RawBT.
+
+----------------------------------------------------
+
+NEW PRINTING FLOW
+
+----------------------------------------------------
+
+After successful payment:
+
+Show Manual Print Modal with ONLY:
+
+[ Print Store Copy ]
+
+[ Print Customer Copy ]
+
+[ Save Internal Sales Invoice ]
+
+Remove:
+
+- Print Copy 3
+
+- Auto printing of invoice
+
+----------------------------------------------------
+
+IMPLEMENTATION DETAILS
+
+----------------------------------------------------
+
+1) Modify ManualPrintModal component
+
+Remove:
+
+- Print Copy 3 button
+
+Rename:
+
+Copy 1 → Store Copy
+
+Copy 2 → Customer Copy
+
+----------------------------------------------------
+
+2) Order Slip File Naming
+
+Store Copy:
+
+PrintQueue-OS-{BRANCH}-{YYMMDD}-{####}-STORE.png
+
+Customer Copy:
+
+PrintQueue-OS-{BRANCH}-{YYMMDD}-{####}-CUSTOMER.png
+
+----------------------------------------------------
+
+3) Internal Sales Invoice Handling
+
+- Generate PNG (or PDF if currently PDF-based)
+
+- Use download only (no share)
+
+- Filename format:
+
+InternalSI-SI-{######}.pdf OR .png
+
+- Do NOT trigger share
+
+- Do NOT open RawBT
+
+- Do NOT auto print
+
+----------------------------------------------------
+
+4) Preserve These Systems (Do NOT Modify)
+
+- Branch-based slip numbering
+
+- Supervisor approval (Void)
+
+- Supervisor approval (Reprint)
+
+- Audit logging
+
+- Cloud-ready structure
+
+- End-of-day closing
+
+- CSV export
+
+----------------------------------------------------
+
+5) Stability Rules
+
+- One share action per tap
+
+- No automatic multi-share loop
+
+- Wait for share promise to resolve
+
+- No background automation
+
+----------------------------------------------------
+
+EXPECTED RESULT
+
+----------------------------------------------------
+
+After sale:
+
+User sees modal:
+
+[ Print Store Copy ]
+
+[ Print Customer Copy ]
+
+[ Save Internal Sales Invoice ]
+
+User taps:
+
+Store → Share → RawBT → Tear
+
+Customer → Share → RawBT → Tear
+
+Invoice → Download only
+
+No 3rd slip.
+
+No invoice printing.
+
+Reduced processing time.
+
+Reduced printer overheating risk.
+
+Lower paper jam risk.
+
+----------------------------------------------------
+
+After implementation, output:
+
+1) Modified files list
+
+2) Updated ManualPrintModal code
+
+3) Confirmation slip numbering unchanged
+
+4) Confirmation supervisor logic unchanged
+
+5) Confirmation audit system untouched
+
+END OF SPEC
+
+```
