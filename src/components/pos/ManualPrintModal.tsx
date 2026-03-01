@@ -4,7 +4,8 @@ import { InvoiceData } from './generateInvoice';
 import { renderReceiptToCanvas, generateReceiptFilename } from './print/pdfReceipt';
 import { renderInvoiceToCanvas } from './generateInvoice';
 import { shareCanvasAsPNG } from '@/utils/shareFile';
-import { Printer, X, Check, Loader2 } from 'lucide-react';
+import { downloadCanvasAsPNG } from '@/utils/downloadFile';
+import { Printer, X, Check, Loader2, Download } from 'lucide-react';
 
 interface ManualPrintModalProps {
   receiptData: ReceiptData;
@@ -14,18 +15,17 @@ interface ManualPrintModalProps {
 
 type PrintStatus = 'idle' | 'printing' | 'done' | 'error';
 
-const COPY_LABELS = ['KITCHEN', 'COUNTER', 'CUSTOMER'] as const;
+const COPY_LABELS = ['STORE', 'CUSTOMER'] as const;
 
 const ManualPrintModal = ({ receiptData, invoiceData, onClose }: ManualPrintModalProps) => {
   const [copyStatus, setCopyStatus] = useState<Record<string, PrintStatus>>({
-    KITCHEN: 'idle',
-    COUNTER: 'idle',
+    STORE: 'idle',
     CUSTOMER: 'idle',
     INVOICE: 'idle',
   });
   const [busy, setBusy] = useState(false);
 
-  const handlePrintCopy = useCallback(async (label: typeof COPY_LABELS[number], copyIndex: number) => {
+  const handlePrintCopy = useCallback(async (label: typeof COPY_LABELS[number]) => {
     if (busy) return;
     setBusy(true);
     setCopyStatus(prev => ({ ...prev, [label]: 'printing' }));
@@ -47,7 +47,7 @@ const ManualPrintModal = ({ receiptData, invoiceData, onClose }: ManualPrintModa
     }
   }, [busy, receiptData]);
 
-  const handlePrintInvoice = useCallback(async () => {
+  const handleSaveInvoice = useCallback(async () => {
     if (busy) return;
     setBusy(true);
     setCopyStatus(prev => ({ ...prev, INVOICE: 'printing' }));
@@ -56,22 +56,22 @@ const ManualPrintModal = ({ receiptData, invoiceData, onClose }: ManualPrintModa
       const canvas = renderInvoiceToCanvas(invoiceData);
       const controlStr = String(invoiceData.controlNumber).padStart(6, '0');
       const filename = `InternalSI-SI-${controlStr}.png`;
-      await shareCanvasAsPNG(canvas, filename);
+      downloadCanvasAsPNG(canvas, filename);
       setCopyStatus(prev => ({ ...prev, INVOICE: 'done' }));
     } catch (err) {
-      console.error('Print invoice failed:', err);
+      console.error('Save invoice failed:', err);
       setCopyStatus(prev => ({ ...prev, INVOICE: 'error' }));
     } finally {
       setBusy(false);
     }
   }, [busy, invoiceData]);
 
-  const statusIcon = (status: PrintStatus) => {
+  const statusIcon = (status: PrintStatus, isDownload?: boolean) => {
     switch (status) {
       case 'printing': return <Loader2 size={18} className="animate-spin" />;
       case 'done': return <Check size={18} className="text-green-400" />;
       case 'error': return <span className="text-red-400 text-xs font-bold">!</span>;
-      default: return <Printer size={18} />;
+      default: return isDownload ? <Download size={18} /> : <Printer size={18} />;
     }
   };
 
@@ -96,7 +96,7 @@ const ManualPrintModal = ({ receiptData, invoiceData, onClose }: ManualPrintModa
           {COPY_LABELS.map((label, i) => (
             <button
               key={label}
-              onClick={() => handlePrintCopy(label, i + 1)}
+              onClick={() => handlePrintCopy(label)}
               disabled={busy}
               className={`w-full h-14 rounded-xl font-display font-semibold text-sm flex items-center justify-between px-5 transition-all active:scale-[0.98] ${
                 copyStatus[label] === 'done'
@@ -106,14 +106,14 @@ const ManualPrintModal = ({ receiptData, invoiceData, onClose }: ManualPrintModa
                   : 'bg-primary/20 text-primary-foreground border border-primary/30'
               } disabled:opacity-50`}
             >
-              <span>Print Copy {i + 1} — {label}</span>
+              <span>Print {label === 'STORE' ? 'Store' : 'Customer'} Copy</span>
               {statusIcon(copyStatus[label])}
             </button>
           ))}
 
           <div className="border-t border-foreground/10 pt-3 mt-3">
             <button
-              onClick={handlePrintInvoice}
+              onClick={handleSaveInvoice}
               disabled={busy}
               className={`w-full h-14 rounded-xl font-display font-semibold text-sm flex items-center justify-between px-5 transition-all active:scale-[0.98] ${
                 copyStatus.INVOICE === 'done'
@@ -123,8 +123,8 @@ const ManualPrintModal = ({ receiptData, invoiceData, onClose }: ManualPrintModa
                   : 'bg-accent/20 text-accent border border-accent/30'
               } disabled:opacity-50`}
             >
-              <span>Print Sales Invoice</span>
-              {statusIcon(copyStatus.INVOICE)}
+              <span>Save Internal Sales Invoice</span>
+              {statusIcon(copyStatus.INVOICE, true)}
             </button>
           </div>
         </div>
