@@ -17,7 +17,9 @@ export type Database = {
       completed_sales: {
         Row: {
           branch_code: string
+          cash_received: number | null
           cashier_name: string | null
+          change_amount: number | null
           control_number: number
           created_at: string
           discount_total: number | null
@@ -40,7 +42,9 @@ export type Database = {
         }
         Insert: {
           branch_code?: string
+          cash_received?: number | null
           cashier_name?: string | null
+          change_amount?: number | null
           control_number: number
           created_at?: string
           discount_total?: number | null
@@ -63,7 +67,9 @@ export type Database = {
         }
         Update: {
           branch_code?: string
+          cash_received?: number | null
           cashier_name?: string | null
+          change_amount?: number | null
           control_number?: number
           created_at?: string
           discount_total?: number | null

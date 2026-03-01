@@ -4,7 +4,7 @@ import { Banknote, CreditCard, Smartphone, ArrowLeft, QrCode } from 'lucide-reac
 
 interface PaymentFlowProps {
   total: number;
-  onComplete: (method: PaymentMethod) => void;
+  onComplete: (method: PaymentMethod, cashReceived?: number, change?: number) => void;
   onCancel: () => void;
 }
 
@@ -179,7 +179,7 @@ const PaymentFlow = ({ total, onComplete, onCancel }: PaymentFlowProps) => {
             Back
           </button>
           <button
-            onClick={() => onComplete('cash')}
+            onClick={() => onComplete('cash', cashAmount, change)}
             disabled={!isSufficient}
             className="flex-[2] h-12 bg-pos-gold text-primary rounded-xl font-display font-bold text-lg active:scale-[0.97] transition-transform disabled:opacity-30 disabled:active:scale-100"
           >

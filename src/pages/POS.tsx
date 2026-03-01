@@ -6,12 +6,14 @@ import { usePrinter } from '@/components/pos/print/usePrinter';
 import { useServiceCharge } from '@/components/pos/useServiceCharge';
 import { useSlipManagement } from '@/components/pos/useSlipManagement';
 import { ReceiptData } from '@/components/pos/print/escpos';
+import { buildTwoCopyReceiptBytes } from '@/components/pos/print/escpos80';
+import { bluetoothPrinter } from '@/components/pos/print/bluetoothPrinter';
 import {
   fetchBranchConfig, fetchVatMode, generateOrderSlipNumber,
   generateControlNumber, calculateVatBreakdown, saveSale, saveSlipRecord,
   BranchConfig, VatBreakdown,
 } from '@/components/pos/useSalesEngine';
-import { downloadInvoice, InvoiceData, renderInvoiceToCanvas } from '@/components/pos/generateInvoice';
+// Invoice generation removed — computations stored in DB, no PDF printing
 import MenuPanel from '@/components/pos/MenuPanel';
 import OrderPanel from '@/components/pos/OrderPanel';
 import ComboPrompt from '@/components/pos/ComboPrompt';
@@ -26,13 +28,13 @@ import ItemDiscountFlow from '@/components/pos/ItemDiscountFlow';
 import PrePaymentModal from '@/components/pos/PrePaymentModal';
 import ReprintFlow from '@/components/pos/ReprintFlow';
 import SlipSummaryDashboard from '@/components/pos/SlipSummaryDashboard';
-import ManualPrintModal from '@/components/pos/ManualPrintModal';
+import TransactionsMasterlist from '@/components/pos/TransactionsMasterlist';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
-import { BarChart3, Printer, Shield, AlertTriangle, FileText, Lock } from 'lucide-react';
+import { BarChart3, Printer, Shield, AlertTriangle, FileText, Lock, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
-type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors' | 'slip-summary';
+type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors' | 'slip-summary' | 'transactions';
 
 const POS = () => {
   const order = useOrderState();
@@ -46,7 +48,7 @@ const POS = () => {
   const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null | 'search'>(null);
   const [itemDiscountTarget, setItemDiscountTarget] = useState<OrderItem | null>(null);
   const [reprintOrder, setReprintOrder] = useState<CompletedOrder | null>(null);
-  const [printModalData, setPrintModalData] = useState<{ receipt: ReceiptData; invoice: InvoiceData } | null>(null);
+  // printModalData removed — now using auto-print ESC/POS
 
   // Branch config + VAT mode loaded on mount
   const [branchConfig, setBranchConfig] = useState<BranchConfig | null>(null);
@@ -107,7 +109,7 @@ const POS = () => {
 
   // Phase 6: Post-payment automation
   const handleCompletePayment = useCallback(
-    async (method: PaymentMethod) => {
+    async (method: PaymentMethod, cashReceived?: number, changeAmount?: number) => {
       if (!branchConfig) {
         toast.error('Branch config not loaded');
         return;
@@ -151,6 +153,8 @@ const POS = () => {
           branchCode: branchConfig.code,
           serviceChargePercent: serviceCharge.config.percent,
           transactionId: txId,
+          cashReceived: cashReceived ?? null,
+          changeAmount: changeAmount ?? null,
         });
       } catch (err) {
         console.error('Failed to save sale:', err);
@@ -198,26 +202,21 @@ const POS = () => {
         } : undefined,
         total: payableTotal,
         paymentMethod: method,
+        cashReceived: cashReceived,
+        change: changeAmount,
       };
+      // 5. Auto-print ESC/POS two copies (fire-and-forget)
+      const bytes = buildTwoCopyReceiptBytes(receiptData);
+      if (bluetoothPrinter.status.connected) {
+        bluetoothPrinter.sendBytes(bytes).then(ok => {
+          if (ok) toast.success('Receipt printed ✓');
+          else toast.error('Print failed — check printer');
+        });
+      } else {
+        toast.warning('Printer not connected — receipt not printed');
+      }
 
-      // 5. Build invoice data
-      const invoiceData: InvoiceData = {
-        branchConfig,
-        orderSlipNumber,
-        controlNumber,
-        date: now.toISOString().slice(0, 10),
-        time: now.toTimeString().slice(0, 5),
-        cashier: 'ANA',
-        items: order.items,
-        vatBreakdown,
-        serviceChargePercent: serviceCharge.config.percent,
-        paymentMethod: method,
-      };
-
-      // 6. Show manual print modal (no auto-loop)
-      setPrintModalData({ receipt: receiptData, invoice: invoiceData });
-
-      // 7. Clear order and reset view
+      // 6. Clear order and reset view
       order.clearOrder();
       setView('menu');
     },
@@ -252,7 +251,7 @@ const POS = () => {
     if (!branchConfig) return;
     setReprintOrder(null);
 
-    // Print 3 copies with REPRINT COPY label
+    // Build ESC/POS reprint and send directly
     const now = new Date();
     const receiptData: ReceiptData = {
       storeName: branchConfig.legal_name,
@@ -268,7 +267,7 @@ const POS = () => {
           name: item.menuItem.name,
           amount: calculateItemFinal(item),
           discountLabel: item.discount
-            ? `${item.discount.discount_name || item.discount.reason} -₱${discAmt.toFixed(2)}`
+            ? `${item.discount.discount_name || item.discount.reason} -PHP${discAmt.toFixed(2)}`
             : undefined,
           idNumber: item.discount?.id_number,
         };
@@ -279,24 +278,16 @@ const POS = () => {
       isReprint: true,
     };
 
-    const invoiceData: InvoiceData = {
-      branchConfig,
-      orderSlipNumber: completedOrder.orderSlipNumber,
-      controlNumber: 0,
-      date: now.toISOString().slice(0, 10),
-      time: now.toTimeString().slice(0, 5),
-      cashier: 'ANA',
-      items: completedOrder.items,
-      vatBreakdown: calculateVatBreakdown(completedOrder.items, 0, vatMode),
-      serviceChargePercent: 0,
-      paymentMethod: completedOrder.paymentMethod,
-      isReprint: true,
-    };
-
-    // Show manual print modal instead of auto-loop
-    setPrintModalData({ receipt: receiptData, invoice: invoiceData });
-    toast.success('Reprint ready — use print modal');
-  }, [branchConfig, vatMode]);
+    const bytes = buildTwoCopyReceiptBytes(receiptData);
+    if (bluetoothPrinter.status.connected) {
+      bluetoothPrinter.sendBytes(bytes).then(ok => {
+        if (ok) toast.success('Reprint sent to printer ✓');
+        else toast.error('Reprint failed');
+      });
+    } else {
+      toast.warning('Printer not connected — reprint not sent');
+    }
+  }, [branchConfig]);
 
   const handleItemDiscount = useCallback((item: OrderItem) => { setItemDiscountTarget(item); }, []);
 
@@ -358,6 +349,13 @@ const POS = () => {
           >
             <FileText size={18} />
           </button>
+          <button
+            onClick={() => setView(view === 'transactions' ? 'menu' : 'transactions')}
+            className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
+            title="Transactions"
+          >
+            <ListChecks size={18} />
+          </button>
           <span className="font-body text-sm text-primary-foreground/50">
             {new Date().toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
           </span>
@@ -386,6 +384,8 @@ const POS = () => {
           onBack={() => setView('menu')}
           onDayCloseChange={(closed) => slipMgmt.checkDayClose()}
         />
+      ) : view === 'transactions' ? (
+        <TransactionsMasterlist onBack={() => setView('menu')} branchConfig={branchConfig} />
       ) : (
         <div className="flex-1 flex overflow-hidden">
           <div className="w-[65%] overflow-y-auto bg-background">
@@ -454,13 +454,6 @@ const POS = () => {
           totalAmountDue={payableTotal}
           onContinueToPayment={handleContinueToPayment}
           onEditOrder={handleEditOrder}
-        />
-      )}
-      {printModalData && (
-        <ManualPrintModal
-          receiptData={printModalData.receipt}
-          invoiceData={printModalData.invoice}
-          onClose={() => setPrintModalData(null)}
         />
       )}
     </div>

@@ -122,6 +122,8 @@ export async function saveSale(params: {
   branchCode: string;
   serviceChargePercent: number;
   transactionId?: string;
+  cashReceived?: number | null;
+  changeAmount?: number | null;
 }) {
   const { error } = await supabase.from("completed_sales").insert({
     order_slip_number: params.orderSlipNumber,
@@ -152,6 +154,8 @@ export async function saveSale(params: {
     cashier_name: params.cashierName,
     branch_code: params.branchCode,
     transaction_id: params.transactionId,
+    cash_received: params.cashReceived ?? null,
+    change_amount: params.changeAmount ?? null,
   } as any);
 
   if (error) throw error;
