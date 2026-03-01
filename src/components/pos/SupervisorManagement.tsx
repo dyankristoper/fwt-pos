@@ -18,16 +18,19 @@ interface Supervisor {
 
 interface SupervisorManagementProps {
   onBack: () => void;
+  onCashierNameChange?: (name: string) => void;
 }
 
 type View = 'auth' | 'list' | 'add' | 'edit' | 'menu-admin';
 
-const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
+const SupervisorManagement = ({ onBack, onCashierNameChange }: SupervisorManagementProps) => {
   const [view, setView] = useState<View>('auth');
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [authPin, setAuthPin] = useState('');
   const [authError, setAuthError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cashierNameInput, setCashierNameInput] = useState('');
+  const [cashierNameSaving, setCashierNameSaving] = useState(false);
 
   // Form state
   const [editId, setEditId] = useState<string | null>(null);
@@ -35,6 +38,29 @@ const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
   const [formPin, setFormPin] = useState('');
   const [formRole, setFormRole] = useState<'supervisor' | 'admin'>('supervisor');
   const [showPin, setShowPin] = useState(false);
+
+  // Load current cashier name on auth success
+  const loadCashierName = useCallback(async () => {
+    const { data } = await supabase.from('pos_settings').select('setting_value').eq('setting_key', 'cashier_name').single();
+    if (data?.setting_value && (data.setting_value as any).name) {
+      setCashierNameInput((data.setting_value as any).name);
+    }
+  }, []);
+
+  const saveCashierName = async () => {
+    if (!cashierNameInput.trim()) { toast.error('Cashier name cannot be empty'); return; }
+    setCashierNameSaving(true);
+    const value = { name: cashierNameInput.trim().toUpperCase() };
+    const { data: existing } = await supabase.from('pos_settings').select('id').eq('setting_key', 'cashier_name').single();
+    if (existing) {
+      await supabase.from('pos_settings').update({ setting_value: value as any }).eq('setting_key', 'cashier_name');
+    } else {
+      await supabase.from('pos_settings').insert({ setting_key: 'cashier_name', setting_value: value as any });
+    }
+    onCashierNameChange?.(value.name);
+    toast.success(`Cashier name set to "${value.name}"`);
+    setCashierNameSaving(false);
+  };
 
   const fetchSupervisors = useCallback(async () => {
     const { data } = await supabase.from('supervisors').select('*').order('created_at', { ascending: true });
@@ -54,6 +80,7 @@ const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
       setAuthError(false);
       setView('list');
       fetchSupervisors();
+      loadCashierName();
     } else {
       setAuthError(true);
       setAuthPin('');
@@ -298,6 +325,29 @@ const SupervisorManagement = ({ onBack }: SupervisorManagementProps) => {
         <div className="mt-8 space-y-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Settings</h2>
           
+          {/* Cashier Name */}
+          <div className="bg-card rounded-xl border-2 border-foreground/10 p-4">
+            <p className="font-display font-bold text-sm text-foreground mb-1">Cashier Name</p>
+            <p className="text-[11px] text-foreground/40 mb-3">Name printed on order slips</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={cashierNameInput}
+                onChange={e => setCashierNameInput(e.target.value.toUpperCase())}
+                maxLength={30}
+                placeholder="e.g. ANA"
+                className="flex-1 h-10 px-3 bg-background border-2 border-foreground/10 rounded-lg font-display text-sm text-foreground uppercase focus:border-accent focus:outline-none transition-colors"
+              />
+              <button
+                onClick={saveCashierName}
+                disabled={cashierNameSaving || !cashierNameInput.trim()}
+                className="h-10 px-4 bg-pos-gold text-primary rounded-lg font-display font-semibold text-sm active:scale-[0.97] transition-transform disabled:opacity-30"
+              >
+                {cashierNameSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+
           {/* Menu Items Admin */}
           <button onClick={() => setView('menu-admin')}
             className="w-full bg-card rounded-xl border-2 border-foreground/10 p-4 flex items-center gap-3 active:scale-[0.98] transition-transform text-left">
