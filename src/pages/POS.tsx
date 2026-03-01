@@ -319,8 +319,9 @@ const POS = () => {
       <header className="h-14 shrink-0 bg-primary flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <img src={logoEmblem} alt="FWT" className="h-9 w-9 rounded-full object-cover border-2 border-primary-foreground/20" />
-          <span className="font-display text-xl font-bold text-primary-foreground">Featherweight Chicken</span>
+          <span className="font-display text-xl font-bold text-primary-foreground">Fifth D</span>
           <span className="font-display text-xs text-primary-foreground/40 hidden sm:block uppercase tracking-widest">POS</span>
+          <span className="font-display text-xs text-primary-foreground/70 bg-primary-foreground/10 px-2 py-0.5 rounded-md">{cashierName}</span>
           {slipMgmt.dayClose.isClosed && (
             <span className="flex items-center gap-1 text-xs font-display font-bold text-accent bg-accent/20 px-2 py-1 rounded-lg">
               <Lock size={12} /> Day Closed
