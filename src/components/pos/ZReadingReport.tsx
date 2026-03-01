@@ -61,7 +61,7 @@ const ZReadingReport = ({ summary, onBack }: ZReadingReportProps) => {
         <div className="bg-card rounded-2xl border-2 border-foreground/10 overflow-hidden">
           {/* Store header */}
           <div className="bg-primary text-primary-foreground p-6 text-center">
-            <p className="font-display text-2xl font-bold">FEATHERWEIGHT CHICKEN</p>
+            <p className="font-display text-2xl font-bold">FIFTH D FRIED CHICKEN KIOSK</p>
             <p className="font-display text-sm opacity-70 mt-1">End-of-Day Z-Reading</p>
             <p className="font-display text-xs opacity-50 mt-1">THIS IS NOT A VALID OFFICIAL RECEIPT.<br />A BIR-REGISTERED MANUAL RECEIPT WILL BE ISSUED.</p>
           </div>
