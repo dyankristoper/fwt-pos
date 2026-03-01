@@ -56,6 +56,7 @@ const POS = () => {
   const [vatMode, setVatMode] = useState<'inclusive' | 'exclusive'>('inclusive');
   const [cashierName, setCashierName] = useState('CASHIER');
   const loadedRef = useRef(false);
+  const paymentInFlight = useRef(false);
 
   // Day-close state
   const slipMgmt = useSlipManagement(branchConfig?.code || 'QC01');
@@ -117,14 +118,18 @@ const POS = () => {
   // Phase 6: Post-payment automation
   const handleCompletePayment = useCallback(
     async (method: PaymentMethod, cashReceived?: number, changeAmount?: number) => {
+      if (paymentInFlight.current) return;
+      paymentInFlight.current = true;
       if (!branchConfig) {
         toast.error('Branch config not loaded');
+        paymentInFlight.current = false;
         return;
       }
 
       if (slipMgmt.dayClose.isClosed) {
         toast.error('Day is closed — cannot complete transaction');
         setView('menu');
+        paymentInFlight.current = false;
         return;
       }
 
@@ -226,6 +231,7 @@ const POS = () => {
       // 6. Clear order and reset view
       order.clearOrder();
       setView('menu');
+      paymentInFlight.current = false;
     },
     [order, completeOrder, printer, branchConfig, vatBreakdown, payableTotal, serviceCharge, scAmount, slipMgmt.dayClose.isClosed]
   );
