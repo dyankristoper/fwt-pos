@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useOrderState, calculateItemFinal, calculateItemDiscount } from '@/components/pos/useOrderState';
 import { useDailySummary } from '@/components/pos/useDailySummary';
 import { usePrinter } from '@/components/pos/print/usePrinter';
@@ -53,6 +54,7 @@ const POS = () => {
   // Branch config + VAT mode loaded on mount
   const [branchConfig, setBranchConfig] = useState<BranchConfig | null>(null);
   const [vatMode, setVatMode] = useState<'inclusive' | 'exclusive'>('inclusive');
+  const [cashierName, setCashierName] = useState('CASHIER');
   const loadedRef = useRef(false);
 
   // Day-close state
@@ -65,6 +67,11 @@ const POS = () => {
       const [bc, vm] = await Promise.all([fetchBranchConfig(), fetchVatMode()]);
       setBranchConfig(bc);
       setVatMode(vm);
+      // Load cashier name
+      const { data: cnData } = await supabase.from('pos_settings').select('setting_value').eq('setting_key', 'cashier_name').single();
+      if (cnData?.setting_value && (cnData.setting_value as any).name) {
+        setCashierName((cnData.setting_value as any).name);
+      }
     })();
   }, []);
 
@@ -149,7 +156,7 @@ const POS = () => {
           items: order.items,
           vatBreakdown,
           paymentMethod: method,
-          cashierName: 'ANA',
+          cashierName,
           branchCode: branchConfig.code,
           serviceChargePercent: serviceCharge.config.percent,
           transactionId: txId,
@@ -166,7 +173,7 @@ const POS = () => {
         slipNumber: orderSlipNumber,
         branchId: branchConfig.code,
         deviceId: 'TAB-A8-01',
-        cashierName: 'ANA',
+        cashierName,
         total: payableTotal,
       });
 
@@ -182,7 +189,7 @@ const POS = () => {
         orderSlipNumber,
         date: now.toISOString().slice(0, 10),
         time: now.toTimeString().slice(0, 5),
-        cashier: 'ANA',
+        cashier: cashierName,
         items: order.items.map(item => {
           const discAmt = calculateItemDiscount(item);
           return {
@@ -377,7 +384,7 @@ const POS = () => {
       ) : view === 'printer-settings' ? (
         <PrinterSettings onBack={() => setView('menu')} />
       ) : view === 'supervisors' ? (
-        <SupervisorManagement onBack={() => setView('menu')} />
+        <SupervisorManagement onBack={() => setView('menu')} onCashierNameChange={setCashierName} />
       ) : view === 'slip-summary' ? (
         <SlipSummaryDashboard
           branchId={branchConfig?.code || 'QC01'}
