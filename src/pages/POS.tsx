@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useOrderState, calculateItemFinal, calculateItemDiscount } from '@/components/pos/useOrderState';
 import { useDailySummary } from '@/components/pos/useDailySummary';
 import { usePrinter } from '@/components/pos/print/usePrinter';
-import { useInventoryIntegration } from '@/components/pos/useInventoryIntegration';
+
 import { useServiceCharge } from '@/components/pos/useServiceCharge';
 import { useSlipManagement } from '@/components/pos/useSlipManagement';
 import { ReceiptData } from '@/components/pos/print/escpos';
@@ -28,7 +28,7 @@ import ReprintFlow from '@/components/pos/ReprintFlow';
 import SlipSummaryDashboard from '@/components/pos/SlipSummaryDashboard';
 import ManualPrintModal from '@/components/pos/ManualPrintModal';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
-import { BarChart3, Printer, Shield, Wifi, WifiOff, AlertTriangle, FileText, Lock } from 'lucide-react';
+import { BarChart3, Printer, Shield, AlertTriangle, FileText, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
@@ -38,7 +38,7 @@ const POS = () => {
   const order = useOrderState();
   const { summary, completeOrder, addDiscount, addVoidRefund } = useDailySummary();
   const printer = usePrinter();
-  const inventory = useInventoryIntegration();
+  
   const serviceCharge = useServiceCharge();
   const [view, setView] = useState<POSView>('menu');
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('sandwiches');
@@ -119,21 +119,8 @@ const POS = () => {
         return;
       }
 
-      // 1. Inventory deduction
+      // 1. Generate order slip number + control number
       const txId = `TXN-${Date.now()}`;
-      const result = await inventory.deductInventory(order.items, txId, method, payableTotal);
-
-      if (!result.success) {
-        toast.error(result.error || 'Inventory deduction failed — cannot complete sale');
-        setView('menu');
-        return;
-      }
-
-      if (result.queued) {
-        toast.info('Order saved — inventory pending validation');
-      }
-
-      // 2. Generate order slip number + control number
       let orderSlipNumber: string;
       let controlNumber: number;
       try {
@@ -234,7 +221,7 @@ const POS = () => {
       order.clearOrder();
       setView('menu');
     },
-    [order, completeOrder, printer, inventory, branchConfig, vatBreakdown, payableTotal, serviceCharge, scAmount, slipMgmt.dayClose.isClosed]
+    [order, completeOrder, printer, branchConfig, vatBreakdown, payableTotal, serviceCharge, scAmount, slipMgmt.dayClose.isClosed]
   );
 
   const handleClearOrder = useCallback(() => {
@@ -343,14 +330,6 @@ const POS = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <div
-            className={`h-10 px-3 rounded-lg flex items-center gap-1.5 font-display font-semibold text-xs ${
-              inventory.isOnline ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-            }`}
-          >
-            {inventory.isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
-            {inventory.isOnline ? 'Online' : 'Offline'}
-          </div>
           <button
             onClick={() => setView(view === 'printer-settings' ? 'menu' : 'printer-settings')}
             className={`h-10 w-10 rounded-lg flex items-center justify-center active:scale-[0.97] transition-transform ${
