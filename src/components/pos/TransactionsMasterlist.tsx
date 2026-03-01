@@ -240,29 +240,57 @@ const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlist
               <div className="flex justify-between"><span className="text-foreground/50">Cashier</span><span>{detail.cashier_name}</span></div>
               <div className="flex justify-between"><span className="text-foreground/50">Payment</span><span className="uppercase">{detail.payment_method}</span></div>
 
-              {/* Line items */}
+              {/* Line items with full detail */}
               <div className="border-t border-foreground/10 pt-3">
-                <p className="font-display font-semibold text-xs text-foreground/50 uppercase mb-2">Line Items</p>
-                {(Array.isArray(detail.order_items) ? detail.order_items : []).map((item: any, idx: number) => (
-                  <div key={idx} className="flex justify-between py-1 border-b border-foreground/5 last:border-0">
-                    <span>{item.quantity || 1}x {item.menuItem?.name || item.name || 'Item'}</span>
-                    <span>PHP {((item.menuItem?.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
+                <p className="font-display font-semibold text-xs text-foreground/50 uppercase mb-2">Order Items</p>
+                {(Array.isArray(detail.order_items) ? detail.order_items : []).map((item: any, idx: number) => {
+                  const qty = item.quantity || 1;
+                  const unitPrice = item.menuItem?.price || item.price || 0;
+                  const lineTotal = unitPrice * qty;
+                  const itemName = item.menuItem?.name || item.name || 'Item';
+                  const discount = item.discount;
+                  const discountValue = discount?.value || 0;
+                  const discountName = discount?.discount_name || discount?.reason || '';
+                  const customerName = discount?.customer_name;
+                  const idNumber = discount?.id_number;
+                  const addOns = item.addOns || item.add_ons || [];
 
-              {/* Discounts */}
-              {Array.isArray(detail.line_discounts) && detail.line_discounts.length > 0 && (
-                <div className="border-t border-foreground/10 pt-3">
-                  <p className="font-display font-semibold text-xs text-foreground/50 uppercase mb-2">Discounts</p>
-                  {detail.line_discounts.map((d: any, idx: number) => (
-                    <div key={idx} className="flex justify-between py-1 text-accent">
-                      <span>{d.item}: {d.discount?.discount_name || d.discount?.reason || 'Discount'}</span>
-                      <span>-PHP {(d.discount?.value || 0).toFixed(2)}</span>
+                  return (
+                    <div key={idx} className="py-2 border-b border-foreground/5 last:border-0">
+                      <div className="flex justify-between">
+                        <span className="font-display font-semibold">{qty}x {itemName}</span>
+                        <span className="font-body">PHP {lineTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="text-xs text-foreground/40 ml-4">
+                        @ PHP {unitPrice.toFixed(2)} each
+                      </div>
+                      {Array.isArray(addOns) && addOns.length > 0 && addOns.map((ao: any, aoIdx: number) => (
+                        <div key={aoIdx} className="text-xs text-foreground/50 ml-4 flex justify-between">
+                          <span>+ {ao.name || ao.menuItem?.name || 'Add-on'}</span>
+                          <span>PHP {(ao.price || ao.menuItem?.price || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                      {discount && discountValue > 0 && (
+                        <div className="ml-4 mt-1 space-y-0.5">
+                          <div className="flex justify-between text-xs text-destructive">
+                            <span>↳ {discountName} ({discount.discount_percent || 0}%)</span>
+                            <span>-PHP {discountValue.toFixed(2)}</span>
+                          </div>
+                          {customerName && (
+                            <div className="text-xs text-foreground/40 ml-2">Name: {customerName}</div>
+                          )}
+                          {idNumber && (
+                            <div className="text-xs text-foreground/40 ml-2">ID #: {idNumber}</div>
+                          )}
+                          {discount.is_vat_exempt && (
+                            <div className="text-xs text-destructive/70 ml-2">VAT-Exempt</div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
 
               {/* VAT Computation Breakdown */}
               <div className="border-t border-foreground/10 pt-3 space-y-1">
