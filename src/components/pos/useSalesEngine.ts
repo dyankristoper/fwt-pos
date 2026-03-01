@@ -28,7 +28,7 @@ export interface VatBreakdown {
 
 const DEFAULT_BRANCH: BranchConfig = {
   code: "QC01",
-  name: "Main Branch",
+  name: "Triumph Tower, Quezon Ave. Branch",
   legal_name: "Fifth D Fried Chicken Kiosk.",
   address: "1610 Quezon Avenue, Quezon City",
   tin: "000-000-000-000",
