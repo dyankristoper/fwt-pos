@@ -315,6 +315,26 @@ const POS = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background touch-manipulation select-none" onContextMenu={e => e.preventDefault()}>
+      {/* Printer not connected blocker */}
+      {!printer.status.connected && view !== 'printer-settings' && (
+        <div className="fixed inset-0 z-50 bg-background/95 flex flex-col items-center justify-center gap-6 p-8">
+          <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center animate-pulse">
+            <Printer size={40} className="text-destructive" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-foreground text-center">Printer Not Connected</h2>
+          <p className="font-body text-foreground/60 text-center max-w-sm text-sm">
+            POS is disabled until a thermal printer is connected. Please connect your printer to proceed.
+          </p>
+          <button
+            onClick={() => setView('printer-settings')}
+            className="h-14 px-8 bg-primary text-primary-foreground rounded-xl font-display font-bold text-lg flex items-center gap-3 active:scale-[0.97] transition-transform"
+          >
+            <Printer size={20} />
+            Connect Printer
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="h-14 shrink-0 bg-primary flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
