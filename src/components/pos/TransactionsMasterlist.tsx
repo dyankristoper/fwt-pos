@@ -38,7 +38,7 @@ interface TransactionsMasterlistProps {
   embedded?: boolean;
 }
 
-const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlistProps) => {
+const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: TransactionsMasterlistProps) => {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
