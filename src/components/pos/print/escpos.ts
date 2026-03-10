@@ -151,6 +151,9 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
   // Items (with per-item discount labels)
   for (const item of data.items) {
     addLine(formatItemLine(item.qty, item.name, item.amount));
+    if (item.specialInstruction) {
+      addLine("   >> " + item.specialInstruction.substring(0, 26));
+    }
     if (item.discountLabel) {
       addLine("   " + item.discountLabel.substring(0, 29));
     }
