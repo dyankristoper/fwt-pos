@@ -415,14 +415,13 @@ const POS = () => {
         <PrinterSettings onBack={() => setView('menu')} />
       ) : view === 'supervisors' ? (
         <SupervisorManagement onBack={() => setView('menu')} onCashierNameChange={setCashierName} />
-      ) : view === 'slip-summary' ? (
-        <SlipSummaryDashboard
-          branchId={branchConfig?.code || 'QC01'}
-          onBack={() => setView('menu')}
-          onDayCloseChange={(closed) => slipMgmt.checkDayClose()}
-        />
       ) : view === 'transactions' ? (
-        <TransactionsMasterlist onBack={() => setView('menu')} branchConfig={branchConfig} />
+        <TransactionsSummaryView
+          branchId={branchConfig?.code || 'QC01'}
+          branchConfig={branchConfig}
+          onBack={() => setView('menu')}
+          onDayCloseChange={() => slipMgmt.checkDayClose()}
+        />
       ) : (
         <div className="flex-1 flex overflow-hidden">
           <div className="w-[65%] overflow-y-auto bg-background">
