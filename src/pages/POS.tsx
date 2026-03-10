@@ -387,16 +387,9 @@ const POS = () => {
             <AlertTriangle size={18} />
           </button>
           <button
-            onClick={() => setView(view === 'slip-summary' ? 'menu' : 'slip-summary')}
-            className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
-            title="Slip Summary"
-          >
-            <FileText size={18} />
-          </button>
-          <button
             onClick={() => setView(view === 'transactions' ? 'menu' : 'transactions')}
             className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
-            title="Transactions"
+            title="Transactions Summary"
           >
             <ListChecks size={18} />
           </button>
