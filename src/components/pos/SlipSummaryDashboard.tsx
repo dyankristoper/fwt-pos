@@ -21,7 +21,7 @@ interface SlipRow {
   void_by?: string;
 }
 
-const SlipSummaryDashboard = ({ branchId, onBack, onDayCloseChange }: SlipSummaryDashboardProps) => {
+const SlipSummaryDashboard = ({ branchId, onBack, onDayCloseChange, embedded }: SlipSummaryDashboardProps) => {
   const { dayClose, closeDay, reopenDay } = useSlipManagement(branchId);
   const [slips, setSlips] = useState<SlipRow[]>([]);
   const [reprintCount, setReprintCount] = useState(0);
