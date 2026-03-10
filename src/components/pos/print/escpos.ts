@@ -90,7 +90,7 @@ export interface ReceiptData {
   date: string;
   time: string;
   cashier: string;
-  items: { qty: number; name: string; amount: number; discountLabel?: string; idNumber?: string }[];
+  items: { qty: number; name: string; amount: number; discountLabel?: string; idNumber?: string; specialInstruction?: string }[];
   subtotal: number;
   serviceCharge?: {
     percent: number;
