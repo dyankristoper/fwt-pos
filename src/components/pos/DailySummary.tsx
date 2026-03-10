@@ -123,6 +123,38 @@ const DailySummary = ({ summary, onBack, onVoidRefund, onReprint, onZReading }: 
             </div>
           </>
         )}
+
+        {/* Next-Day Change Float */}
+        <h2 className="font-display text-xl font-bold text-foreground mb-4 mt-8">Next-Day Change Float</h2>
+        <div className="bg-card rounded-xl border-2 border-foreground/5 overflow-hidden mb-4">
+          <div className="grid grid-cols-4 gap-4 p-4 bg-foreground/5 font-display font-semibold text-xs text-foreground/60 uppercase tracking-wide">
+            <span>Denomination</span>
+            <span className="text-right">Qty</span>
+            <span className="text-right">Total (₱)</span>
+            <span>Purpose</span>
+          </div>
+          {[
+            { denom: '100s', qty: 10, total: 1000, purpose: 'For change on 500s or 1,000s.' },
+            { denom: '50s', qty: 14, total: 700, purpose: 'Your workhorse bill for 250-peso items.' },
+            { denom: '20s', qty: 20, total: 400, purpose: 'Essential for 180-peso items.' },
+            { denom: '10s (Coins)', qty: 20, total: 200, purpose: 'For smaller adjustments.' },
+            { denom: '5s (Coins)', qty: 20, total: 100, purpose: 'Buffer for multiple orders.' },
+            { denom: '1s (Coins)', qty: 100, total: 100, purpose: 'General exact change.' },
+          ].map(row => (
+            <div key={row.denom} className="grid grid-cols-4 gap-4 p-4 border-t border-foreground/5 items-center">
+              <span className="font-display font-bold text-sm">{row.denom}</span>
+              <span className="text-right text-foreground/60 text-sm">{row.qty}</span>
+              <span className="text-right font-display font-bold text-sm">₱{row.total.toLocaleString()}</span>
+              <span className="text-foreground/60 text-xs">{row.purpose}</span>
+            </div>
+          ))}
+          <div className="grid grid-cols-4 gap-4 p-4 border-t-2 border-foreground/10 bg-foreground/5">
+            <span className="font-display font-bold text-sm">Total</span>
+            <span />
+            <span className="text-right font-display font-bold text-lg text-foreground">₱2,500</span>
+            <span />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -446,6 +446,7 @@ const POS = () => {
               onProceedToPayment={handleProceedToPayment}
               onAddIncidental={handleAddIncidental}
               onItemDiscount={handleItemDiscount}
+              onSpecialInstruction={order.setSpecialInstruction}
               serviceCharge={scData}
             />
           </div>
