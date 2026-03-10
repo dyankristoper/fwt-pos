@@ -35,9 +35,11 @@ const OrderPanel = ({
   onProceedToPayment,
   onAddIncidental,
   onItemDiscount,
+  onSpecialInstruction,
   serviceCharge,
 }: OrderPanelProps) => {
   const payableTotal = total + (serviceCharge?.amount ?? 0);
+  const [spInstOpen, setSpInstOpen] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col h-full">
