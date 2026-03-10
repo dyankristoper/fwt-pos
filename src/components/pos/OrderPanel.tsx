@@ -152,63 +152,64 @@ const OrderPanel = ({
                     </div>
                   </div>
 
-                  {/* Quantity controls + item discount button */}
+                  {/* Quantity controls + item discount + sp inst */}
                   {!readOnly && (
-                    <div className="flex items-center gap-3 mt-2">
-                      <button
-                        onClick={() => onDecrement(item.instanceId)}
-                        className="h-10 w-10 rounded-lg bg-foreground/5 flex items-center justify-center active:bg-foreground/15 transition-colors border border-foreground/10"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="font-display font-bold text-lg w-8 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => onIncrement(item.instanceId)}
-                        className="h-10 w-10 rounded-lg bg-foreground/5 flex items-center justify-center active:bg-foreground/15 transition-colors border border-foreground/10"
-                      >
-                        <Plus size={16} />
-                      </button>
-                      <div className="flex-1" />
-                      <button
-                        onClick={() => onItemDiscount(item)}
-                        className={`h-8 px-2.5 rounded-lg font-display font-semibold text-[11px] flex items-center gap-1 active:scale-[0.97] transition-transform border ${
-                          item.discount
-                            ? 'bg-accent/10 text-accent border-accent/20'
-                            : 'bg-foreground/5 text-foreground/40 border-foreground/10'
-                        }`}
-                      >
-                        <Tag size={12} />
-                        {item.discount ? 'Edit' : 'Disc'}
-                      </button>
-                      <button
-                        onClick={() => setSpInstOpen(spInstOpen === item.instanceId ? null : item.instanceId)}
-                        className={`h-8 px-2.5 rounded-lg font-display font-semibold text-[11px] flex items-center gap-1 active:scale-[0.97] transition-transform border ${
-                          item.specialInstruction
-                            ? 'bg-pos-gold/10 text-pos-gold-dark border-pos-gold/20'
-                            : 'bg-foreground/5 text-foreground/40 border-foreground/10'
-                        }`}
-                      >
-                        <MessageSquare size={12} />
-                        Sp Inst
-                      </button>
-                    </div>
-                    {spInstOpen === item.instanceId && (
-                      <div className="mt-2">
-                        <input
-                          type="text"
-                          maxLength={10}
-                          value={item.specialInstruction || ''}
-                          onChange={e => onSpecialInstruction(item.instanceId, e.target.value)}
-                          placeholder="Max 10 chars"
-                          className="w-full h-8 px-2 rounded-lg border border-foreground/10 bg-background text-sm font-body text-foreground placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-pos-gold"
-                          autoFocus
-                        />
+                    <>
+                      <div className="flex items-center gap-3 mt-2">
+                        <button
+                          onClick={() => onDecrement(item.instanceId)}
+                          className="h-10 w-10 rounded-lg bg-foreground/5 flex items-center justify-center active:bg-foreground/15 transition-colors border border-foreground/10"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <span className="font-display font-bold text-lg w-8 text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => onIncrement(item.instanceId)}
+                          className="h-10 w-10 rounded-lg bg-foreground/5 flex items-center justify-center active:bg-foreground/15 transition-colors border border-foreground/10"
+                        >
+                          <Plus size={16} />
+                        </button>
+                        <div className="flex-1" />
+                        <button
+                          onClick={() => onItemDiscount(item)}
+                          className={`h-8 px-2.5 rounded-lg font-display font-semibold text-[11px] flex items-center gap-1 active:scale-[0.97] transition-transform border ${
+                            item.discount
+                              ? 'bg-accent/10 text-accent border-accent/20'
+                              : 'bg-foreground/5 text-foreground/40 border-foreground/10'
+                          }`}
+                        >
+                          <Tag size={12} />
+                          {item.discount ? 'Edit' : 'Disc'}
+                        </button>
+                        <button
+                          onClick={() => setSpInstOpen(spInstOpen === item.instanceId ? null : item.instanceId)}
+                          className={`h-8 px-2.5 rounded-lg font-display font-semibold text-[11px] flex items-center gap-1 active:scale-[0.97] transition-transform border ${
+                            item.specialInstruction
+                              ? 'bg-pos-gold/10 text-pos-gold-dark border-pos-gold/20'
+                              : 'bg-foreground/5 text-foreground/40 border-foreground/10'
+                          }`}
+                        >
+                          <MessageSquare size={12} />
+                          Sp Inst
+                        </button>
                       </div>
-                    )}
-                  </div>
-                )}
+                      {spInstOpen === item.instanceId && (
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            maxLength={10}
+                            value={item.specialInstruction || ''}
+                            onChange={e => onSpecialInstruction(item.instanceId, e.target.value)}
+                            placeholder="Max 10 chars"
+                            className="w-full h-8 px-2 rounded-lg border border-foreground/10 bg-background text-sm font-body text-foreground placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-pos-gold"
+                            autoFocus
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               );
             })}
