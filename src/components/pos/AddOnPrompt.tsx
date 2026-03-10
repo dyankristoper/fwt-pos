@@ -41,7 +41,7 @@ const AddOnPrompt = ({ itemName, onSelectAddOn, onDone }: AddOnPromptProps) => {
           onClick={onDone}
           className="w-full h-12 border-2 border-foreground/15 text-foreground/40 rounded-xl font-display font-semibold active:scale-[0.97] transition-transform"
         >
-          No add-ons
+          Proceed?
         </button>
       </div>
     </div>

@@ -35,9 +35,10 @@ interface SaleRow {
 interface TransactionsMasterlistProps {
   onBack: () => void;
   branchConfig?: { legal_name: string; name: string; code: string } | null;
+  embedded?: boolean;
 }
 
-const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlistProps) => {
+const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: TransactionsMasterlistProps) => {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -150,12 +151,14 @@ const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlist
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {/* Header */}
-      <div className="shrink-0 p-4 flex items-center justify-between border-b border-foreground/10">
+      <div className={`shrink-0 p-4 flex items-center justify-between ${embedded ? '' : 'border-b border-foreground/10'}`}>
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="h-10 w-10 rounded-lg bg-foreground/5 flex items-center justify-center active:scale-95">
-            <ArrowLeft size={18} />
-          </button>
-          <h2 className="font-display text-lg font-bold text-foreground">Transactions</h2>
+          {!embedded && (
+            <button onClick={onBack} className="h-10 w-10 rounded-lg bg-foreground/5 flex items-center justify-center active:scale-95">
+              <ArrowLeft size={18} />
+            </button>
+          )}
+          {!embedded && <h2 className="font-display text-lg font-bold text-foreground">Transactions</h2>}
         </div>
         <div className="flex items-center gap-2">
           <input

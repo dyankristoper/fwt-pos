@@ -30,12 +30,13 @@ import PrePaymentModal from '@/components/pos/PrePaymentModal';
 import ReprintFlow from '@/components/pos/ReprintFlow';
 import SlipSummaryDashboard from '@/components/pos/SlipSummaryDashboard';
 import TransactionsMasterlist from '@/components/pos/TransactionsMasterlist';
+import TransactionsSummaryView from '@/components/pos/TransactionsSummaryView';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
-import { BarChart3, Printer, Shield, AlertTriangle, FileText, Lock, ListChecks } from 'lucide-react';
+import { BarChart3, Printer, Shield, AlertTriangle, Lock, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
-type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors' | 'slip-summary' | 'transactions';
+type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors' | 'transactions';
 
 const POS = () => {
   const order = useOrderState();
@@ -386,16 +387,9 @@ const POS = () => {
             <AlertTriangle size={18} />
           </button>
           <button
-            onClick={() => setView(view === 'slip-summary' ? 'menu' : 'slip-summary')}
-            className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
-            title="Slip Summary"
-          >
-            <FileText size={18} />
-          </button>
-          <button
             onClick={() => setView(view === 'transactions' ? 'menu' : 'transactions')}
             className="h-10 w-10 rounded-lg bg-primary-foreground/10 text-primary-foreground/40 flex items-center justify-center active:scale-[0.97] transition-transform"
-            title="Transactions"
+            title="Transactions Summary"
           >
             <ListChecks size={18} />
           </button>
@@ -421,14 +415,13 @@ const POS = () => {
         <PrinterSettings onBack={() => setView('menu')} />
       ) : view === 'supervisors' ? (
         <SupervisorManagement onBack={() => setView('menu')} onCashierNameChange={setCashierName} />
-      ) : view === 'slip-summary' ? (
-        <SlipSummaryDashboard
-          branchId={branchConfig?.code || 'QC01'}
-          onBack={() => setView('menu')}
-          onDayCloseChange={(closed) => slipMgmt.checkDayClose()}
-        />
       ) : view === 'transactions' ? (
-        <TransactionsMasterlist onBack={() => setView('menu')} branchConfig={branchConfig} />
+        <TransactionsSummaryView
+          branchId={branchConfig?.code || 'QC01'}
+          branchConfig={branchConfig}
+          onBack={() => setView('menu')}
+          onDayCloseChange={() => slipMgmt.checkDayClose()}
+        />
       ) : (
         <div className="flex-1 flex overflow-hidden">
           <div className="w-[65%] overflow-y-auto bg-background">
@@ -453,6 +446,7 @@ const POS = () => {
               onProceedToPayment={handleProceedToPayment}
               onAddIncidental={handleAddIncidental}
               onItemDiscount={handleItemDiscount}
+              onSpecialInstruction={order.setSpecialInstruction}
               serviceCharge={scData}
             />
           </div>
