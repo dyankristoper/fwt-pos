@@ -180,6 +180,12 @@ export function useOrderState() {
     ));
   }, []);
 
+  const setSpecialInstruction = useCallback((instanceId: string, text: string) => {
+    setItems(prev => prev.map(item =>
+      item.instanceId === instanceId ? { ...item, specialInstruction: text.slice(0, 10) } : item
+    ));
+  }, []);
+
   const total = useMemo(() => {
     return items.reduce((sum, item) => sum + calculateItemFinal(item), 0);
   }, [items]);
