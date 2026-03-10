@@ -35,6 +35,7 @@ interface SaleRow {
 interface TransactionsMasterlistProps {
   onBack: () => void;
   branchConfig?: { legal_name: string; name: string; code: string } | null;
+  embedded?: boolean;
 }
 
 const TransactionsMasterlist = ({ onBack, branchConfig }: TransactionsMasterlistProps) => {
