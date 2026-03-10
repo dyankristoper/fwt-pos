@@ -203,6 +203,7 @@ const POS = () => {
             qty: item.quantity,
             name: item.menuItem.name,
             amount: calculateItemFinal(item),
+            specialInstruction: item.specialInstruction,
             discountLabel: item.discount
               ? `${item.discount.discount_name || item.discount.reason} -₱${discAmt.toFixed(2)}`
               : undefined,

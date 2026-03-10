@@ -232,6 +232,9 @@ export function buildReceiptText(data: ReceiptData): string {
 
   for (const item of data.items) {
     lines.push(formatItemLine(item.qty, item.name, item.amount));
+    if (item.specialInstruction) {
+      lines.push("   >> " + item.specialInstruction.substring(0, 26));
+    }
     if (item.discountLabel) {
       lines.push("   " + item.discountLabel.substring(0, 29));
     }
