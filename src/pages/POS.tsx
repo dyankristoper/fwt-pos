@@ -36,7 +36,7 @@ import { BarChart3, Printer, Shield, AlertTriangle, Lock, ListChecks } from 'luc
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
-type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors' | 'slip-summary' | 'transactions';
+type POSView = 'menu' | 'pre-payment' | 'payment' | 'summary' | 'z-reading' | 'printer-settings' | 'supervisors' | 'transactions';
 
 const POS = () => {
   const order = useOrderState();
