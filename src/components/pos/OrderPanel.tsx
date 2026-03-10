@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { OrderItem } from './types';
 import { calculateItemTotal, calculateItemDiscount, calculateItemFinal } from './useOrderState';
-import { X, Plus, Minus, ShoppingCart, CreditCard, Tag } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, CreditCard, Tag, MessageSquare } from 'lucide-react';
 import IncidentalsPopover from './IncidentalsPopover';
 import { MenuItem } from './types';
 
@@ -17,6 +18,7 @@ interface OrderPanelProps {
   onProceedToPayment: () => void;
   onAddIncidental: (item: MenuItem) => void;
   onItemDiscount: (item: OrderItem) => void;
+  onSpecialInstruction: (instanceId: string, text: string) => void;
   serviceCharge?: { enabled: boolean; percent: number; amount: number };
 }
 
