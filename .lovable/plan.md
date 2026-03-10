@@ -1,119 +1,68 @@
 
 
-## Plan: Fast RawBT ESC/POS Auto-Print + Transactions Masterlist
+## Plan: 5 POS UI/UX Changes
 
-This is a significant workflow overhaul: replacing the Manual Print Modal (PNG share-to-RawBT) with direct ESC/POS Bluetooth printing, adding a Completed Transactions masterlist, and verifying sales invoice computations are stored.
+### 1. Merge "Slip Summary" and "Transactions" into one "Transactions Summary" tab
 
-### Current State
+**Files:** `src/pages/POS.tsx`
 
-- **Printing**: Uses a Manual Print Modal that renders PNG canvases and shares them via Web Share API to RawBT. This is slow because RawBT must rasterize/convert the PNG.
-- **ESC/POS infrastructure**: Already exists (`escpos.ts` has `buildReceiptBytes` for 32-char/58mm, `bluetoothPrinter.ts` has SPP send, `printQueue.ts` handles queuing). But the current layout targets 58mm (32 chars). Spec requires 80mm (48 chars).
-- **Transactions Masterlist**: Does not exist as a dedicated page. DailySummary shows basic order list (slip#, time, method, total). SlipSummaryDashboard shows slip-level data but not full VAT breakdown.
-- **Sales Invoice computations**: Already stored in `completed_sales` table with all required fields (gross_sales, discount_total, net_sales, vatable_sales, vat_amount, vat_exempt_sales, zero_rated_sales, service_charge_amount, service_charge_percent, total_amount_due, payment_method, cashier_name, order_items, line_discounts). **No schema changes needed.**
-- **Missing from DB**: `cash_received` and `change_amount` are not stored. These should be added for complete transaction records.
+- Remove the `'slip-summary'` view. Consolidate into `'transactions'` view.
+- Remove the separate `FileText` icon button for Slip Summary from the header.
+- Rename the `ListChecks` button title to "Transactions Summary".
+- Create a new combined view component `TransactionsSummaryView` that uses internal tabs (Radix Tabs) to show both the Slip Summary content and the Transactions Masterlist content side by side.
+- Alternatively (simpler): render a tabbed wrapper inside the `'transactions'` view case that toggles between `SlipSummaryDashboard` and `TransactionsMasterlist` content. The wrapper will have two sub-tabs: "Slips" and "Sales". The day-close/reopen controls from SlipSummaryDashboard will remain accessible.
 
-### Files to Create
+**New file:** `src/components/pos/TransactionsSummaryView.tsx`
+- Uses `Tabs`/`TabsList`/`TabsTrigger`/`TabsContent` from shadcn.
+- "Slips" tab renders `SlipSummaryDashboard` (minus its own back button/header — pass a prop or wrap).
+- "Sales" tab renders `TransactionsMasterlist` (minus its own back button).
+- Single shared header with back button + date + CSV exports.
 
-1. **`src/components/pos/print/escpos80.ts`** — New 80mm ESC/POS receipt builder (48 chars/line)
-   - Rewrite layout functions for 48-char width
-   - `buildTwoCopyReceiptBytes(data)` — builds STORE COPY + cut + CUSTOMER COPY + cut in one Uint8Array
-   - Same ESC/POS commands (INIT, ALIGN, BOLD, DOUBLE_HEIGHT, CUT)
-   - Uses "PHP" instead of "₱" to avoid encoding issues
-   - Compact: minimal blank lines, feed only 2 lines before cut
+Actually, to minimize scope, the simplest approach: render both existing components inside a tab wrapper. Each already has its own header with back button. We'll wrap them and hide individual back buttons by passing the back handler to the wrapper only. But that requires modifying both components.
 
-2. **`src/components/pos/TransactionsMasterlist.tsx`** — New Completed Transactions view
-   - Fetches from `completed_sales` table for today (with option to pick date)
-   - Table columns: Date, Slip #, Gross Sales, Discount, VATable Sales, VAT Amount, VAT-Exempt, Service Charge, Total, Payment, Cashier
-   - Row click → detail modal showing full invoice computation breakdown + line items
-   - Reprint button in detail view (triggers ESC/POS two-copy print)
-   - CSV export
+**Simplest approach:** In `POS.tsx`, replace the two separate view cases and two separate header buttons with one button and one view that renders a tabbed container with both components embedded as-is (each keeps its own back button pointing to `setView('menu')`). The tab wrapper just switches between them.
 
-### Files to Modify
+### 2. Add end-of-day change float table under "Summary" tab
 
-3. **`src/pages/POS.tsx`** — Major changes:
-   - Remove ManualPrintModal import and state (`printModalData`)
-   - After payment: build ESC/POS bytes for two copies (STORE + CUSTOMER) using new `buildTwoCopyReceiptBytes`, send via `bluetoothPrinter.sendBytes()` immediately (fire-and-forget, non-blocking)
-   - If Bluetooth not connected, fall back to PNG share (single combined share) or show toast warning
-   - Add new POSView `'transactions'` and wire to header button
-   - Same change for reprint flow: send ESC/POS directly instead of showing modal
-   - Remove `downloadInvoice` / `renderInvoiceToCanvas` imports (no more PDF/PNG invoice printing)
-   - Keep invoice data computation for DB storage (already saved via `saveSale`)
+**File:** `src/components/pos/DailySummary.tsx`
 
-4. **`src/components/pos/print/escpos.ts`** — Keep existing 58mm builder but add `copyLabel` support for the 80mm builder to reference shared types (`ReceiptData`)
+Add a section after the "Recent Orders" block with the exact change float table:
 
-5. **`src/components/pos/PaymentFlow.tsx`** — Pass back `cashReceived` and `change` values to `handleCompletePayment` so they can be stored and printed
+| Denomination | Qty | Total (₱) | Purpose |
+|---|---|---|---|
+| 100s | 10 | 1,000 | For change on 500s or 1,000s. |
+| 50s | 14 | 700 | Your workhorse bill for 250-peso items. |
+| 20s | 20 | 400 | Essential for 180-peso items. |
+| 10s (Coins) | 20 | 200 | For smaller adjustments. |
+| 5s (Coins) | 20 | 100 | Buffer for multiple orders. |
+| 1s (Coins) | 100 | 100 | General exact change. |
 
-### Database Changes
+**Total: ₱2,500**
 
-6. **Migration**: Add two columns to `completed_sales`:
-   - `cash_received numeric default null` — amount tendered (cash payments)
-   - `change_amount numeric default null` — change given
+### 3. Replace "No add-ons" with "Proceed?" in AddOnPrompt
 
-### Technical Details
+**File:** `src/components/pos/AddOnPrompt.tsx`
 
-**Two-Copy ESC/POS Layout (48 chars, 80mm)**:
-```text
-\x1B\x40                          ← INIT
-\x1B\x61\x01                      ← CENTER
------ STORE COPY -----
-\x1B\x45\x01                      ← BOLD ON
-FIFTH D FRIED CHICKEN KIOSK.
-\x1B\x45\x00                      ← BOLD OFF
-Main Branch
-------------------------------------------------
-ORDER SLIP
-NOT OFFICIAL RECEIPT
-------------------------------------------------
-\x1B\x61\x00                      ← LEFT
-Slip #: OS-QC01-260301-0001
-Date  : 2026-03-01
-Time  : 14:30
-Cash  : ANA
-------------------------------------------------
- 2 Classic Sandwich          250.00
-   Senior -PHP25.00
-   ID: 12345678
- 1 Chicken Box               180.00
-------------------------------------------------
-Subtotal:                    405.00
-Svc Charge (8%):              32.40
-\x1B\x45\x01\x1D\x21\x11         ← BOLD + DOUBLE
-TOTAL:                       437.40
-\x1D\x21\x00\x1B\x45\x00         ← NORMAL
-Payment: CASH
-Received:                    500.00
-Change:                       62.60
-------------------------------------------------
-THIS IS NOT A VALID
-OFFICIAL RECEIPT.
-Manual OR will be issued.
-------------------------------------------------
-Thank you!
-\n\n
-\x1D\x56\x01                      ← AUTO CUT
-\x1B\x40                          ← RE-INIT
-... repeat for CUSTOMER COPY ...
-\x1D\x56\x01                      ← FINAL CUT
-```
+Change button text from "No add-ons" to "Proceed?"
 
-**Auto-print flow**:
-```
-Payment complete → saveSale() → buildTwoCopyReceiptBytes() → bluetoothPrinter.sendBytes() → toast success
-```
-- `sendBytes` is fire-and-forget (no await blocking UI)
-- If not connected: toast warning "Printer not connected — receipt not printed"
+### 4. Add "Sp Inst" button per cart line item with 10-char input
 
-**Transactions Masterlist**:
-- Queries `completed_sales` with all VAT fields
-- Detail modal reuses stored data (source of truth is DB, not frontend recalculation)
-- Reprint from detail: builds ESC/POS from stored `order_items` JSON
+**Files:** `src/components/pos/types.ts`, `src/components/pos/useOrderState.ts`, `src/components/pos/OrderPanel.tsx`
 
-### What is NOT Changed
+- Add `specialInstruction?: string` to `OrderItem` type.
+- Add `setSpecialInstruction(instanceId, text)` to `useOrderState`.
+- In `OrderPanel`, add a "Sp Inst" button next to the "Disc" button per line item.
+- Tapping it toggles a small inline input (max 10 chars). Display the instruction text below the item name when set.
+- Expose the new handler via props from `POS.tsx`.
 
-- VAT computation logic (`calculateVatBreakdown` in `useSalesEngine.ts`)
-- Slip numbering (`generateOrderSlipNumber`, `generateControlNumber`)
-- Supervisor approval / audit logging
-- Day close / reopen flow
-- Bluetooth connection/pairing infrastructure
-- `buildReceiptBytes` in existing `escpos.ts` (kept for backward compat)
+### 5. Disable/remove the "Edit site with lovable" toast
+
+The badge/toast comes from the `lovable-tagger` plugin in `vite.config.ts` or is injected by the preview environment. For the published app, appending `?forceHideBadge=true` to the URL hides it (already used in capacitor config). To suppress it in the web build, we can add the query param approach or add CSS to hide the badge element. The most reliable approach: add a small CSS rule in `src/index.css` to hide `[data-lovable-badge]` or the known badge selector, and also check if there's a GPT toast being triggered.
+
+Actually the "Edit site with lovable" toast is a platform-injected element in the preview. It cannot be fully removed via code. However, we can hide it with CSS targeting the badge/widget. We'll add `#lovable-badge { display: none !important; }` to `index.css`.
+
+### Assumptions
+- The "Edit site with lovable" toast is the Lovable badge injected in the preview; hiding via CSS is the best available approach.
+- Special instructions are display-only in the cart (not printed on receipts yet).
+- The merged "Transactions Summary" view uses simple sub-tabs rather than a full component rewrite.
 
