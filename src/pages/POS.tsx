@@ -30,8 +30,9 @@ import PrePaymentModal from '@/components/pos/PrePaymentModal';
 import ReprintFlow from '@/components/pos/ReprintFlow';
 import SlipSummaryDashboard from '@/components/pos/SlipSummaryDashboard';
 import TransactionsMasterlist from '@/components/pos/TransactionsMasterlist';
+import TransactionsSummaryView from '@/components/pos/TransactionsSummaryView';
 import { MenuCategory, PaymentMethod, MenuItem, CompletedOrder, OrderItem, ItemDiscount } from '@/components/pos/types';
-import { BarChart3, Printer, Shield, AlertTriangle, FileText, Lock, ListChecks } from 'lucide-react';
+import { BarChart3, Printer, Shield, AlertTriangle, Lock, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import logoEmblem from '@/assets/logo-emblem.jpg';
 
