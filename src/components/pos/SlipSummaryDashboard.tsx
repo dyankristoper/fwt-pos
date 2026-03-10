@@ -8,6 +8,7 @@ interface SlipSummaryDashboardProps {
   branchId: string;
   onBack: () => void;
   onDayCloseChange?: (isClosed: boolean) => void;
+  embedded?: boolean;
 }
 
 interface SlipRow {
