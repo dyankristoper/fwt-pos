@@ -98,8 +98,10 @@ function buildSingleCopy80(data: ReceiptData, copyLabel: string): Uint8Array {
   // Items
   for (const item of data.items) {
     addLine(formatItemLine80(item.qty, item.name, item.amount));
+    if (item.specialInstruction) {
+      addLine('   >> ' + item.specialInstruction.substring(0, 42));
+    }
     if (item.discountLabel) {
-      // Replace ₱ with PHP for encoding safety
       const safeLabel = item.discountLabel.replace(/₱/g, 'PHP');
       addLine('   ' + safeLabel.substring(0, 44));
     }

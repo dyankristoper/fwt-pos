@@ -90,7 +90,7 @@ export interface ReceiptData {
   date: string;
   time: string;
   cashier: string;
-  items: { qty: number; name: string; amount: number; discountLabel?: string; idNumber?: string }[];
+  items: { qty: number; name: string; amount: number; discountLabel?: string; idNumber?: string; specialInstruction?: string }[];
   subtotal: number;
   serviceCharge?: {
     percent: number;
@@ -151,6 +151,9 @@ export function buildReceiptBytes(data: ReceiptData): Uint8Array {
   // Items (with per-item discount labels)
   for (const item of data.items) {
     addLine(formatItemLine(item.qty, item.name, item.amount));
+    if (item.specialInstruction) {
+      addLine("   >> " + item.specialInstruction.substring(0, 26));
+    }
     if (item.discountLabel) {
       addLine("   " + item.discountLabel.substring(0, 29));
     }
@@ -229,6 +232,9 @@ export function buildReceiptText(data: ReceiptData): string {
 
   for (const item of data.items) {
     lines.push(formatItemLine(item.qty, item.name, item.amount));
+    if (item.specialInstruction) {
+      lines.push("   >> " + item.specialInstruction.substring(0, 26));
+    }
     if (item.discountLabel) {
       lines.push("   " + item.discountLabel.substring(0, 29));
     }
