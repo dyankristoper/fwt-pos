@@ -36,6 +36,7 @@ export interface OrderItem {
   comboDrink?: MenuItem;
   addOns: MenuItem[];
   discount?: ItemDiscount;
+  specialInstruction?: string;
 }
 
 export interface CompletedOrder {

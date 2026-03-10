@@ -151,12 +151,14 @@ const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: Transactions
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {/* Header */}
-      <div className="shrink-0 p-4 flex items-center justify-between border-b border-foreground/10">
+      <div className={`shrink-0 p-4 flex items-center justify-between ${embedded ? '' : 'border-b border-foreground/10'}`}>
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="h-10 w-10 rounded-lg bg-foreground/5 flex items-center justify-center active:scale-95">
-            <ArrowLeft size={18} />
-          </button>
-          <h2 className="font-display text-lg font-bold text-foreground">Transactions</h2>
+          {!embedded && (
+            <button onClick={onBack} className="h-10 w-10 rounded-lg bg-foreground/5 flex items-center justify-center active:scale-95">
+              <ArrowLeft size={18} />
+            </button>
+          )}
+          {!embedded && <h2 className="font-display text-lg font-bold text-foreground">Transactions</h2>}
         </div>
         <div className="flex items-center gap-2">
           <input

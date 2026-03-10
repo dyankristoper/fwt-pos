@@ -108,12 +108,12 @@ const SlipSummaryDashboard = ({ branchId, onBack, onDayCloseChange, embedded }: 
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 bg-background">
-      <div className="max-w-3xl mx-auto">
+    <div className={embedded ? '' : 'flex-1 overflow-y-auto p-6 bg-background'}>
+      <div className={embedded ? '' : 'max-w-3xl mx-auto'}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">Slip Summary</h1>
+            {!embedded && <h1 className="font-display text-3xl font-bold text-foreground">Slip Summary</h1>}
             <p className="text-muted-foreground mt-1">
               {new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
@@ -134,10 +134,12 @@ const SlipSummaryDashboard = ({ branchId, onBack, onDayCloseChange, embedded }: 
                 <Lock size={18} /> Close Day
               </button>
             )}
-            <button onClick={onBack}
-              className="h-12 px-6 bg-primary text-primary-foreground rounded-lg font-display font-semibold flex items-center gap-2 active:scale-[0.97] transition-transform">
-              <ArrowLeft size={20} /> Back
-            </button>
+            {!embedded && (
+              <button onClick={onBack}
+                className="h-12 px-6 bg-primary text-primary-foreground rounded-lg font-display font-semibold flex items-center gap-2 active:scale-[0.97] transition-transform">
+                <ArrowLeft size={20} /> Back
+              </button>
+            )}
           </div>
         </div>
 

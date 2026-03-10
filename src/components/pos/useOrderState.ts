@@ -210,5 +210,6 @@ export function useOrderState() {
     restoreOrder,
     applyItemDiscount,
     removeItemDiscount,
+    setSpecialInstruction,
   };
 }
