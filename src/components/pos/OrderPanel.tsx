@@ -86,10 +86,33 @@ const OrderPanel = ({
                           </span>
                         )}
                       </div>
-                      {item.isCombo && item.comboDrink && (
-                        <p className="text-[11px] text-foreground/45 mt-0.5">
-                          w/ Fries + FWTea
-                        </p>
+                      {item.isCombo && (
+                        <div className="mt-1 space-y-0.5">
+                          <div className="flex items-center gap-1 text-[11px] text-foreground/55">
+                            <span>+ Fries (Combo)</span>
+                            {!readOnly && (
+                              <button
+                                onClick={() => onRemoveCombo(item.instanceId)}
+                                className="text-accent/50 active:text-accent ml-0.5 p-1"
+                              >
+                                <X size={10} />
+                              </button>
+                            )}
+                          </div>
+                          {item.comboDrink && (
+                            <div className="flex items-center gap-1 text-[11px] text-foreground/55">
+                              <span>+ {item.comboDrink.name} (Combo)</span>
+                              {!readOnly && (
+                                <button
+                                  onClick={() => onRemoveCombo(item.instanceId)}
+                                  className="text-accent/50 active:text-accent ml-0.5 p-1"
+                                >
+                                  <X size={10} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                       {item.addOns.length > 0 && (
                         <div className="mt-1 space-y-0.5">
