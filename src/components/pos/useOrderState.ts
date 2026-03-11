@@ -114,6 +114,14 @@ export function useOrderState() {
     setPendingComboItemId(null);
   }, []);
 
+  const removeCombo = useCallback((instanceId: string) => {
+    setItems(prev => prev.map(item =>
+      item.instanceId === instanceId
+        ? { ...item, isCombo: false, comboDrink: undefined }
+        : item
+    ));
+  }, []);
+
   const declineCombo = useCallback(() => {
     setPendingComboItemId(null);
   }, []);
