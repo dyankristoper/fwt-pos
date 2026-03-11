@@ -443,7 +443,8 @@ const POS = () => {
               onIncrement={order.incrementQuantity}
               onDecrement={order.decrementQuantity}
               onRemoveItem={order.removeItem}
-              onRemoveAddOn={order.removeAddOn}
+               onRemoveAddOn={order.removeAddOn}
+               onRemoveCombo={order.removeCombo}
               onClearOrder={handleClearOrder}
               onProceedToPayment={handleProceedToPayment}
               onAddIncidental={handleAddIncidental}
