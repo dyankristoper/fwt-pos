@@ -32,6 +32,7 @@ const OrderPanel = ({
   onDecrement,
   onRemoveItem,
   onRemoveAddOn,
+  onRemoveCombo,
   onClearOrder,
   onProceedToPayment,
   onAddIncidental,

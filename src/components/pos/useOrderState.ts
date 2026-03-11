@@ -209,6 +209,7 @@ export function useOrderState() {
     pendingComboItem,
     addItem,
     makeCombo,
+    removeCombo,
     declineCombo,
     removeItem,
     incrementQuantity,
