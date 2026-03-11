@@ -14,6 +14,7 @@ interface OrderPanelProps {
   onDecrement: (id: string) => void;
   onRemoveItem: (id: string) => void;
   onRemoveAddOn: (id: string, index: number) => void;
+  onRemoveCombo: (id: string) => void;
   onClearOrder: () => void;
   onProceedToPayment: () => void;
   onAddIncidental: (item: MenuItem) => void;
