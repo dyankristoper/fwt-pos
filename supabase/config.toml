@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.sku-lookup]
 verify_jwt = false
+
+[functions.get-pos-data-for-fwteam]
+verify_jwt = false
