@@ -6,6 +6,7 @@ import ServiceChargeSettings from './ServiceChargeSettings';
 import DiscountManagement from './DiscountManagement';
 import BranchVatSettings from './BranchVatSettings';
 import AdminMenuManagement from './AdminMenuManagement';
+import StoreSettings from './StoreSettings';
 
 interface Supervisor {
   id: string;
@@ -360,6 +361,7 @@ const SupervisorManagement = ({ onBack, onCashierNameChange }: SupervisorManagem
             </div>
           </button>
 
+          <StoreSettings />
           <BranchVatSettings />
           <DiscountManagement />
           <ServiceChargeSettings />
