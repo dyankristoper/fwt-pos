@@ -57,6 +57,7 @@ const POS = () => {
   const [branchConfig, setBranchConfig] = useState<BranchConfig | null>(null);
   const [vatMode, setVatMode] = useState<'inclusive' | 'exclusive'>('inclusive');
   const [cashierName, setCashierName] = useState('CASHIER');
+  const [storeIdentity, setStoreIdentity] = useState({ display_name: '', logo_url: '' });
   const loadedRef = useRef(false);
   const paymentInFlight = useRef(false);
 
@@ -74,6 +75,13 @@ const POS = () => {
       const { data: cnData } = await supabase.from('pos_settings').select('setting_value').eq('setting_key', 'cashier_name').single();
       if (cnData?.setting_value && (cnData.setting_value as any).name) {
         setCashierName((cnData.setting_value as any).name);
+      }
+      // Load store identity
+      const { data: siData } = await supabase.from('pos_settings').select('setting_value').eq('setting_key', 'store_identity').single();
+      if (siData?.setting_value) {
+        const si = siData.setting_value as any;
+        setStoreIdentity(si);
+        if (si.document_title) document.title = si.document_title;
       }
     })();
   }, []);
@@ -356,8 +364,8 @@ const POS = () => {
       {/* Header */}
       <header className="h-14 shrink-0 bg-primary flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <img src={logoEmblem} alt="FWT" className="h-9 w-9 rounded-full object-cover border-2 border-primary-foreground/20" />
-          <span className="font-display text-xl font-bold text-primary-foreground">Fifth D</span>
+          <img src={storeIdentity.logo_url || logoEmblem} alt="FWT" className="h-9 w-9 rounded-full object-cover border-2 border-primary-foreground/20" onError={e => { (e.currentTarget as HTMLImageElement).src = logoEmblem; }} />
+          <span className="font-display text-xl font-bold text-primary-foreground">{storeIdentity.display_name || 'Fifth D'}</span>
           <span className="font-display text-xs text-primary-foreground/40 hidden sm:block uppercase tracking-widest">POS</span>
           <span className="font-display text-xs text-primary-foreground/70 bg-primary-foreground/10 px-2 py-0.5 rounded-md">{cashierName}</span>
           {slipMgmt.dayClose.isClosed && (
