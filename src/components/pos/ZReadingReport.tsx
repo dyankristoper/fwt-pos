@@ -1,5 +1,15 @@
+import { useState, useEffect } from 'react';
 import { DailySummaryData } from './types';
 import { ArrowLeft, FileText, Banknote, CreditCard, Smartphone, Tag, XCircle, RotateCcw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface BranchConfig {
+  code: string;
+  name: string;
+  legal_name: string;
+  address: string;
+  tin: string;
+}
 
 interface ZReadingReportProps {
   summary: DailySummaryData;
@@ -7,7 +17,21 @@ interface ZReadingReportProps {
 }
 
 const ZReadingReport = ({ summary, onBack }: ZReadingReportProps) => {
+  const [branchConfig, setBranchConfig] = useState<BranchConfig | null>(null);
   const now = new Date();
+
+  useEffect(() => {
+    supabase
+      .from('pos_settings')
+      .select('setting_value')
+      .eq('setting_key', 'branch_config')
+      .single()
+      .then(({ data }) => {
+        if (data?.setting_value) {
+          setBranchConfig(data.setting_value as unknown as BranchConfig);
+        }
+      });
+  }, []);
   const dateStr = now.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const timeStr = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
 
@@ -61,7 +85,9 @@ const ZReadingReport = ({ summary, onBack }: ZReadingReportProps) => {
         <div className="bg-card rounded-2xl border-2 border-foreground/10 overflow-hidden">
           {/* Store header */}
           <div className="bg-primary text-primary-foreground p-6 text-center">
-            <p className="font-display text-2xl font-bold">FIFTH D FRIED CHICKEN KIOSK</p>
+            <p className="font-display text-2xl font-bold">
+              {branchConfig?.legal_name ?? '7487 ST. COFFEE'}
+            </p>
             <p className="font-display text-sm opacity-70 mt-1">End-of-Day Z-Reading</p>
             <p className="font-display text-xs opacity-50 mt-1">THIS IS NOT A VALID OFFICIAL RECEIPT.<br />A BIR-REGISTERED MANUAL RECEIPT WILL BE ISSUED.</p>
           </div>
