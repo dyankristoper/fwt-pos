@@ -26,6 +26,7 @@ import PrinterSettings from '@/components/pos/PrinterSettings';
 import SupervisorManagement from '@/components/pos/SupervisorManagement';
 import VoidRefundFlow from '@/components/pos/VoidRefundFlow';
 import ItemDiscountFlow from '@/components/pos/ItemDiscountFlow';
+import GlobalDiscountFlow from '@/components/pos/GlobalDiscountFlow';
 import PrePaymentModal from '@/components/pos/PrePaymentModal';
 import ReprintFlow from '@/components/pos/ReprintFlow';
 import SlipSummaryDashboard from '@/components/pos/SlipSummaryDashboard';
@@ -49,6 +50,7 @@ const POS = () => {
   const [addOnPromptItemId, setAddOnPromptItemId] = useState<string | null>(null);
   const [voidRefundOrder, setVoidRefundOrder] = useState<CompletedOrder | null | 'search'>(null);
   const [itemDiscountTarget, setItemDiscountTarget] = useState<OrderItem | null>(null);
+  const [showGlobalDiscount, setShowGlobalDiscount] = useState(false);
   const [reprintOrder, setReprintOrder] = useState<CompletedOrder | null>(null);
   const [printerWarningDismissed, setPrinterWarningDismissed] = useState(false);
   // printModalData removed — now using auto-print ESC/POS
@@ -109,7 +111,7 @@ const POS = () => {
 
   // Calculated totals
   const scAmount = serviceCharge.calculateServiceCharge(order.total);
-  const vatBreakdown = calculateVatBreakdown(order.items, scAmount, vatMode);
+  const vatBreakdown = calculateVatBreakdown(order.items, scAmount, vatMode, order.orderDiscount);
   const payableTotal = vatBreakdown.totalAmountDue;
 
   // Phase 4: Pre-payment modal → payment
@@ -177,6 +179,7 @@ const POS = () => {
           transactionId: txId,
           cashReceived: cashReceived ?? null,
           changeAmount: changeAmount ?? null,
+          orderDiscount: order.orderDiscount,
         });
       } catch (err) {
         console.error('Failed to save sale:', err);
@@ -219,6 +222,12 @@ const POS = () => {
           };
         }),
         subtotal: order.total,
+        orderDiscount: order.orderDiscount
+          ? {
+              name: order.orderDiscount.discount_name || order.orderDiscount.reason,
+              amount: order.orderDiscountAmount,
+            }
+          : undefined,
         serviceCharge: serviceCharge.config.enabled ? {
           percent: serviceCharge.config.percent,
           amount: scAmount,
@@ -326,6 +335,18 @@ const POS = () => {
     order.removeItemDiscount(instanceId);
     setItemDiscountTarget(null);
     toast.success('Item discount removed');
+  }, [order]);
+
+  const handleApplyOrderDiscount = useCallback((discount: ItemDiscount) => {
+    order.applyOrderDiscount(discount);
+    setShowGlobalDiscount(false);
+    toast.success(`${discount.discount_name || 'Order discount'} applied`);
+  }, [order]);
+
+  const handleRemoveOrderDiscount = useCallback(() => {
+    order.removeOrderDiscount();
+    setShowGlobalDiscount(false);
+    toast.success('Order discount removed');
   }, [order]);
 
   const scData = serviceCharge.config.enabled
@@ -446,6 +467,9 @@ const POS = () => {
             <OrderPanel
               items={order.items}
               total={order.total}
+              itemsNetSales={order.itemsNetSales}
+              orderDiscount={order.orderDiscount}
+              orderDiscountAmount={order.orderDiscountAmount}
               orderNumber={0}
               readOnly={view === 'payment' || view === 'pre-payment'}
               onIncrement={order.incrementQuantity}
@@ -457,6 +481,7 @@ const POS = () => {
               onProceedToPayment={handleProceedToPayment}
               onAddIncidental={handleAddIncidental}
               onItemDiscount={handleItemDiscount}
+              onOrderDiscount={() => setShowGlobalDiscount(true)}
               onSpecialInstruction={order.setSpecialInstruction}
               serviceCharge={scData}
             />
@@ -493,10 +518,21 @@ const POS = () => {
           onClose={() => setItemDiscountTarget(null)}
         />
       )}
+      {showGlobalDiscount && (
+        <GlobalDiscountFlow
+          orderSubtotal={order.itemsNetSales}
+          existingDiscount={order.orderDiscount}
+          onApply={handleApplyOrderDiscount}
+          onRemove={handleRemoveOrderDiscount}
+          onClose={() => setShowGlobalDiscount(false)}
+        />
+      )}
       {view === 'pre-payment' && (
         <PrePaymentModal
           items={order.items}
           subtotal={order.total}
+          orderDiscount={order.orderDiscount}
+          orderDiscountAmount={order.orderDiscountAmount}
           serviceCharge={scData}
           vatBreakdown={vatBreakdown}
           totalAmountDue={payableTotal}

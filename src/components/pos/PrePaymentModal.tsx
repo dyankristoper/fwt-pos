@@ -1,4 +1,4 @@
-import { OrderItem } from './types';
+import { OrderItem, ItemDiscount } from './types';
 import { calculateItemTotal, calculateItemDiscount, calculateItemFinal } from './useOrderState';
 import { VatBreakdown } from './useSalesEngine';
 import { X, ArrowLeft, CreditCard, FileText, Tag } from 'lucide-react';
@@ -6,6 +6,8 @@ import { X, ArrowLeft, CreditCard, FileText, Tag } from 'lucide-react';
 interface PrePaymentModalProps {
   items: OrderItem[];
   subtotal: number;
+  orderDiscount?: ItemDiscount | null;
+  orderDiscountAmount?: number;
   serviceCharge: { enabled: boolean; percent: number; amount: number } | undefined;
   vatBreakdown: VatBreakdown;
   totalAmountDue: number;
@@ -16,6 +18,8 @@ interface PrePaymentModalProps {
 const PrePaymentModal = ({
   items,
   subtotal,
+  orderDiscount,
+  orderDiscountAmount = 0,
   serviceCharge,
   vatBreakdown,
   totalAmountDue,
@@ -93,6 +97,24 @@ const PrePaymentModal = ({
               })}
             </div>
           </div>
+
+          {/* Order-level discount */}
+          {orderDiscount && orderDiscountAmount > 0 && (
+            <div className="bg-accent/5 border border-accent/15 rounded-xl px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tag size={13} className="text-accent" />
+                <div>
+                  <p className="font-display font-semibold text-sm text-accent">
+                    {orderDiscount.discount_name || 'Order Discount'}
+                  </p>
+                  {orderDiscount.customer_name && (
+                    <p className="text-[11px] text-foreground/40">{orderDiscount.customer_name}</p>
+                  )}
+                </div>
+              </div>
+              <span className="font-display font-bold text-sm text-accent">−₱{orderDiscountAmount.toFixed(2)}</span>
+            </div>
+          )}
 
           {/* Financial breakdown */}
           <div className="bg-background rounded-xl border-2 border-foreground/10 p-4 font-mono text-sm space-y-1.5">

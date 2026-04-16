@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { OrderItem } from './types';
+import { OrderItem, ItemDiscount } from './types';
 import { calculateItemTotal, calculateItemDiscount, calculateItemFinal } from './useOrderState';
 import { X, Plus, Minus, ShoppingCart, CreditCard, Tag, MessageSquare } from 'lucide-react';
 import IncidentalsPopover from './IncidentalsPopover';
@@ -8,6 +8,9 @@ import { MenuItem } from './types';
 interface OrderPanelProps {
   items: OrderItem[];
   total: number;
+  itemsNetSales: number;
+  orderDiscount?: ItemDiscount | null;
+  orderDiscountAmount?: number;
   orderNumber: number;
   readOnly: boolean;
   onIncrement: (id: string) => void;
@@ -19,6 +22,7 @@ interface OrderPanelProps {
   onProceedToPayment: () => void;
   onAddIncidental: (item: MenuItem) => void;
   onItemDiscount: (item: OrderItem) => void;
+  onOrderDiscount: () => void;
   onSpecialInstruction: (instanceId: string, text: string) => void;
   serviceCharge?: { enabled: boolean; percent: number; amount: number };
 }
@@ -26,6 +30,9 @@ interface OrderPanelProps {
 const OrderPanel = ({
   items,
   total,
+  itemsNetSales,
+  orderDiscount,
+  orderDiscountAmount = 0,
   orderNumber,
   readOnly,
   onIncrement,
@@ -37,6 +44,7 @@ const OrderPanel = ({
   onProceedToPayment,
   onAddIncidental,
   onItemDiscount,
+  onOrderDiscount,
   onSpecialInstruction,
   serviceCharge,
 }: OrderPanelProps) => {
@@ -245,10 +253,23 @@ const OrderPanel = ({
       {/* Footer */}
       <div className="border-t-2 border-foreground/10 p-4 shrink-0 bg-card">
         <div className="space-y-1 mb-2">
-          <div className="flex items-center justify-between">
-            <span className="font-display text-sm text-foreground/50 uppercase tracking-wide">Subtotal</span>
-            <span className="font-display text-lg font-semibold text-foreground">₱{total.toFixed(2)}</span>
-          </div>
+          {orderDiscount && (
+            <div className="flex items-center justify-between">
+              <span className="font-display text-sm text-foreground/50 uppercase tracking-wide">Subtotal</span>
+              <span className="font-display text-lg font-semibold text-foreground">₱{itemsNetSales.toFixed(2)}</span>
+            </div>
+          )}
+          {orderDiscount && orderDiscountAmount > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="font-display text-sm text-accent uppercase tracking-wide flex items-center gap-1">
+                <Tag size={11} />
+                {orderDiscount.discount_name || 'Order Discount'}
+              </span>
+              <span className="font-display text-sm font-semibold text-accent">
+                −₱{orderDiscountAmount.toFixed(2)}
+              </span>
+            </div>
+          )}
           {serviceCharge && serviceCharge.enabled && serviceCharge.amount > 0 && (
             <div className="flex items-center justify-between">
               <span className="font-display text-sm text-foreground/50 uppercase tracking-wide">
@@ -269,10 +290,22 @@ const OrderPanel = ({
 
         {!readOnly && (
           <div className="space-y-2">
-            {/* Incidentals row */}
+            {/* Incidentals + order discount row */}
             <div className="flex gap-2 items-center">
               <IncidentalsPopover onAddItem={onAddIncidental} />
               <div className="flex-1" />
+              <button
+                onClick={onOrderDiscount}
+                disabled={items.length === 0}
+                className={`h-8 px-3 rounded-lg font-display font-semibold text-[11px] flex items-center gap-1 active:scale-[0.97] transition-transform border disabled:opacity-30 ${
+                  orderDiscount
+                    ? 'bg-accent/10 text-accent border-accent/20'
+                    : 'bg-foreground/5 text-foreground/40 border-foreground/10'
+                }`}
+              >
+                <Tag size={12} />
+                {orderDiscount ? 'Order Disc ✓' : 'Order Disc'}
+              </button>
             </div>
 
             {/* Main action buttons */}

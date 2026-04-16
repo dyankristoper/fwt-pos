@@ -92,6 +92,7 @@ export interface ReceiptData {
   cashier: string;
   items: { qty: number; name: string; amount: number; discountLabel?: string; idNumber?: string; specialInstruction?: string }[];
   subtotal: number;
+  orderDiscount?: { name: string; amount: number };
   serviceCharge?: {
     percent: number;
     amount: number;

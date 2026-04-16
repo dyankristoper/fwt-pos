@@ -13,6 +13,8 @@ export interface MenuItem {
 
 export type MenuCategory = 'sandwiches' | 'chicken' | 'sides' | 'addons' | 'beverages';
 
+export type OrderDiscount = ItemDiscount;
+
 export interface ItemDiscount {
   type: 'percent' | 'fixed';
   value: number;
