@@ -114,6 +114,12 @@ function buildSingleCopy80(data: ReceiptData, copyLabel: string): Uint8Array {
   // Subtotal
   addLine(formatKV80('Subtotal:', data.subtotal.toFixed(2)));
 
+  // Order-level discount
+  if (data.orderDiscount && data.orderDiscount.amount > 0) {
+    const discName = data.orderDiscount.name.replace(/₱/g, 'PHP');
+    addLine(formatKV80(`  ${discName.substring(0, 24)}:`, `-${data.orderDiscount.amount.toFixed(2)}`));
+  }
+
   // Service charge
   if (data.serviceCharge) {
     addLine(formatKV80(`Svc Charge (${data.serviceCharge.percent}%):`, data.serviceCharge.amount.toFixed(2)));

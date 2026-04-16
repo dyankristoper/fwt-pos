@@ -17,6 +17,7 @@ export interface InvoiceData {
   vatBreakdown: VatBreakdown;
   serviceChargePercent: number;
   paymentMethod: string;
+  orderDiscount?: { name: string; amount: number };
   isReprint?: boolean;
   isVoid?: boolean;
 }
@@ -116,6 +117,9 @@ export function buildInvoiceText(data: InvoiceData): string {
   lines.push(kv('Gross Sales:', `₱${vb.grossSales.toFixed(2)}`));
   if (vb.discountTotal > 0) {
     lines.push(kv('Less: Discounts:', `₱${vb.discountTotal.toFixed(2)}`));
+    if (data.orderDiscount && data.orderDiscount.amount > 0) {
+      lines.push(kv(`  ${data.orderDiscount.name}:`, `₱${data.orderDiscount.amount.toFixed(2)}`));
+    }
   }
   lines.push(kv('Net Sales:', `₱${vb.netSales.toFixed(2)}`));
   lines.push('');

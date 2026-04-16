@@ -3,7 +3,7 @@
  * VAT calculations, and completed sale persistence.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { OrderItem } from "./types";
+import { OrderItem, ItemDiscount } from "./types";
 import { calculateItemTotal, calculateItemDiscount } from "./useOrderState";
 
 export interface BranchConfig {
@@ -66,6 +66,7 @@ export function calculateVatBreakdown(
   items: OrderItem[],
   serviceChargeAmount: number,
   vatMode: "inclusive" | "exclusive",
+  orderDiscount?: ItemDiscount | null,
 ): VatBreakdown {
   let grossSales = 0;
   let discountTotal = 0;
@@ -82,7 +83,14 @@ export function calculateVatBreakdown(
     }
   }
 
-  const netSales = grossSales - discountTotal;
+  const itemsNetSales = grossSales - discountTotal;
+  const globalDiscountAmount = orderDiscount
+    ? (orderDiscount.type === 'percent'
+        ? Math.round(itemsNetSales * Math.min(orderDiscount.value, 100) / 100 * 100) / 100
+        : Math.min(orderDiscount.value, itemsNetSales))
+    : 0;
+  discountTotal += globalDiscountAmount;
+  const netSales = itemsNetSales - globalDiscountAmount;
   const taxableNet = netSales - vatExemptSales;
 
   let vatableSales: number;
@@ -124,21 +132,20 @@ export async function saveSale(params: {
   transactionId?: string;
   cashReceived?: number | null;
   changeAmount?: number | null;
+  orderDiscount?: ItemDiscount | null;
 }) {
+  const itemLineDiscounts = params.items
+    .filter((i) => i.discount)
+    .map((i) => ({ item: i.menuItem.name, discount: i.discount }));
+  const allLineDiscounts = params.orderDiscount
+    ? [...itemLineDiscounts, { item: 'ORDER', discount: params.orderDiscount }]
+    : itemLineDiscounts;
+
   const { error } = await supabase.from("completed_sales").insert({
     order_slip_number: params.orderSlipNumber,
     control_number: params.controlNumber,
     order_items: JSON.parse(JSON.stringify(params.items)) as any,
-    line_discounts: JSON.parse(
-      JSON.stringify(
-        params.items
-          .filter((i) => i.discount)
-          .map((i) => ({
-            item: i.menuItem.name,
-            discount: i.discount,
-          })),
-      ),
-    ) as any,
+    line_discounts: JSON.parse(JSON.stringify(allLineDiscounts)) as any,
     subtotal: params.vatBreakdown.netSales,
     service_charge_percent: params.serviceChargePercent,
     service_charge_amount: params.vatBreakdown.serviceChargeAmount,

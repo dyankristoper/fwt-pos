@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
-import { MenuItem, OrderItem, ItemDiscount } from './types';
+import { MenuItem, OrderItem, ItemDiscount, OrderDiscount } from './types';
 import { COMBO_SURCHARGE, comboEligibleDrinks } from './menuData';
 
 let nextId = 1;
@@ -31,6 +31,7 @@ export function calculateItemFinal(item: OrderItem): number {
 export function useOrderState() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [pendingComboItemId, setPendingComboItemId] = useState<string | null>(null);
+  const [orderDiscount, setOrderDiscount] = useState<OrderDiscount | null>(null);
   const lastMainItemIdRef = useRef<string | null>(null);
 
   const addItem = useCallback((menuItem: MenuItem) => {
@@ -168,6 +169,7 @@ export function useOrderState() {
 
   const clearOrder = useCallback(() => {
     setItems([]);
+    setOrderDiscount(null);
     lastMainItemIdRef.current = null;
     setPendingComboItemId(null);
   }, []);
@@ -188,15 +190,35 @@ export function useOrderState() {
     ));
   }, []);
 
+  const applyOrderDiscount = useCallback((discount: OrderDiscount) => {
+    setOrderDiscount(discount);
+  }, []);
+
+  const removeOrderDiscount = useCallback(() => {
+    setOrderDiscount(null);
+  }, []);
+
   const setSpecialInstruction = useCallback((instanceId: string, text: string) => {
     setItems(prev => prev.map(item =>
       item.instanceId === instanceId ? { ...item, specialInstruction: text.slice(0, 10) } : item
     ));
   }, []);
 
-  const total = useMemo(() => {
+  const itemsNetSales = useMemo(() => {
     return items.reduce((sum, item) => sum + calculateItemFinal(item), 0);
   }, [items]);
+
+  const orderDiscountAmount = useMemo(() => {
+    if (!orderDiscount) return 0;
+    if (orderDiscount.type === 'percent') {
+      return Math.round(itemsNetSales * Math.min(orderDiscount.value, 100) / 100 * 100) / 100;
+    }
+    return Math.min(orderDiscount.value, itemsNetSales);
+  }, [orderDiscount, itemsNetSales]);
+
+  const total = useMemo(() => {
+    return Math.max(0, itemsNetSales - orderDiscountAmount);
+  }, [itemsNetSales, orderDiscountAmount]);
 
   const pendingComboItem = useMemo(() => {
     if (!pendingComboItemId) return null;
@@ -206,6 +228,9 @@ export function useOrderState() {
   return {
     items,
     total,
+    itemsNetSales,
+    orderDiscount,
+    orderDiscountAmount,
     pendingComboItem,
     addItem,
     makeCombo,
@@ -219,6 +244,8 @@ export function useOrderState() {
     restoreOrder,
     applyItemDiscount,
     removeItemDiscount,
+    applyOrderDiscount,
+    removeOrderDiscount,
     setSpecialInstruction,
   };
 }
