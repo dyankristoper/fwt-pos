@@ -1,6 +1,26 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { MenuItem, OrderItem, ItemDiscount, OrderDiscount } from './types';
 import { COMBO_SURCHARGE, comboEligibleDrinks } from './menuData';
+
+const STORAGE_KEY = 'fwt_pos_order';
+
+function loadPersistedOrder(): { items: OrderItem[]; orderDiscount: OrderDiscount | null } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { items: [], orderDiscount: null };
+    return JSON.parse(raw);
+  } catch {
+    return { items: [], orderDiscount: null };
+  }
+}
+
+function persistOrder(items: OrderItem[], orderDiscount: OrderDiscount | null) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, orderDiscount }));
+  } catch {
+    // storage quota exceeded — fail silently
+  }
+}
 
 let nextId = 1;
 const generateId = () => `oi-${nextId++}-${Date.now()}`;
@@ -29,10 +49,15 @@ export function calculateItemFinal(item: OrderItem): number {
 }
 
 export function useOrderState() {
-  const [items, setItems] = useState<OrderItem[]>([]);
+  const persisted = useRef(loadPersistedOrder());
+  const [items, setItems] = useState<OrderItem[]>(persisted.current.items);
   const [pendingComboItemId, setPendingComboItemId] = useState<string | null>(null);
-  const [orderDiscount, setOrderDiscount] = useState<OrderDiscount | null>(null);
+  const [orderDiscount, setOrderDiscount] = useState<OrderDiscount | null>(persisted.current.orderDiscount);
   const lastMainItemIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    persistOrder(items, orderDiscount);
+  }, [items, orderDiscount]);
 
   const addItem = useCallback((menuItem: MenuItem) => {
     const isComboEligible = menuItem.is_combo_eligible === true;
