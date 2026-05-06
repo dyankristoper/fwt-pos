@@ -41,18 +41,20 @@ interface TransactionsMasterlistProps {
 const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: TransactionsMasterlistProps) => {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const today = new Date().toISOString().slice(0, 10);
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(20);
   const [detail, setDetail] = useState<SaleRow | null>(null);
 
   const fetchSales = useCallback(async () => {
     setLoading(true);
-    const startOfDay = `${selectedDate}T00:00:00`;
-    const endOfDay = `${selectedDate}T23:59:59`;
     const { data, error } = await supabase
       .from('completed_sales')
       .select('*')
-      .gte('created_at', startOfDay)
-      .lte('created_at', endOfDay)
+      .gte('created_at', `${startDate}T00:00:00`)
+      .lte('created_at', `${endDate}T23:59:59`)
       .order('created_at', { ascending: false });
     if (error) {
       console.error('Failed to fetch sales:', error);
@@ -60,34 +62,74 @@ const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: Transactions
     }
     setSales((data as unknown as SaleRow[]) || []);
     setLoading(false);
-  }, [selectedDate]);
+  }, [startDate, endDate]);
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
+  useEffect(() => { setPage(1); }, [startDate, endDate]);
 
   const handleExportCSV = useCallback(() => {
     if (sales.length === 0) { toast.error('No data to export'); return; }
-    const headers = ['Date/Time','Slip #','Gross Sales','Discount','VATable Sales','VAT Amount','VAT-Exempt','Service Charge','Total','Payment','Cashier'];
-    const rows = sales.map(s => [
-      new Date(s.created_at).toLocaleString('en-PH'),
-      s.order_slip_number,
-      s.gross_sales.toFixed(2),
-      (s.discount_total ?? 0).toFixed(2),
-      (s.vatable_sales ?? 0).toFixed(2),
-      (s.vat_amount ?? 0).toFixed(2),
-      (s.vat_exempt_sales ?? 0).toFixed(2),
-      (s.service_charge_amount ?? 0).toFixed(2),
-      s.total_amount_due.toFixed(2),
-      s.payment_method,
-      s.cashier_name || '',
-    ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const headers = [
+      'Date/Time', 'Slip #', 'Cashier', 'Payment',
+      'Item Name', 'SKU', 'Qty', 'Unit Price', 'Combo',
+      'Add-Ons', 'Special Instruction', 'Item Discount',
+      'Gross Sales', 'Discount', 'VATable Sales', 'VAT Amount', 'VAT-Exempt', 'Service Charge', 'Total',
+    ];
+
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+    const rows: string[][] = [];
+    for (const s of sales) {
+      const dateTime = new Date(s.created_at).toLocaleString('en-PH');
+      const txnFields = [
+        s.gross_sales.toFixed(2),
+        (s.discount_total ?? 0).toFixed(2),
+        (s.vatable_sales ?? 0).toFixed(2),
+        (s.vat_amount ?? 0).toFixed(2),
+        (s.vat_exempt_sales ?? 0).toFixed(2),
+        (s.service_charge_amount ?? 0).toFixed(2),
+        s.total_amount_due.toFixed(2),
+      ];
+      const orderItems: any[] = Array.isArray(s.order_items) ? s.order_items : [];
+
+      if (orderItems.length === 0) {
+        rows.push([dateTime, s.order_slip_number, s.cashier_name || '', s.payment_method, '', '', '', '', '', '', '', '', ...txnFields]);
+        continue;
+      }
+
+      for (const item of orderItems) {
+        const addOns: string[] = (item.addOns ?? []).map((a: any) => a.name || a.menuItem?.name || '');
+        if (item.isCombo && item.comboDrink?.name) addOns.push(`${item.comboDrink.name} (combo drink)`);
+        const discount = item.discount
+          ? `${item.discount.type === 'percent' ? item.discount.value + '%' : '₱' + Number(item.discount.value).toFixed(2)} – ${item.discount.discount_name || item.discount.reason || ''}`
+          : '';
+        rows.push([
+          dateTime,
+          s.order_slip_number,
+          s.cashier_name || '',
+          s.payment_method,
+          item.menuItem?.name ?? '',
+          item.menuItem?.sku_code ?? '',
+          String(item.quantity ?? 1),
+          Number(item.menuItem?.price ?? 0).toFixed(2),
+          item.isCombo ? 'Yes' : 'No',
+          addOns.join('; '),
+          item.specialInstruction ?? '',
+          discount,
+          ...txnFields,
+        ]);
+      }
+    }
+
+    const csv = [headers, ...rows].map(r => r.map(esc).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `transactions-${selectedDate}.csv`; a.click();
+    const suffix = startDate === endDate ? startDate : `${startDate}-to-${endDate}`;
+    a.href = url; a.download = `transactions-${suffix}.csv`; a.click();
     URL.revokeObjectURL(url);
     toast.success('CSV exported');
-  }, [sales, selectedDate]);
+  }, [sales, startDate, endDate]);
 
   const handleReprint = useCallback(async (sale: SaleRow) => {
     const items = Array.isArray(sale.order_items) ? sale.order_items : [];
@@ -137,6 +179,9 @@ const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: Transactions
     return unique.length > 0 ? unique.join(', ') : '—';
   };
 
+  const totalPages = pageSize === Infinity ? 1 : Math.max(1, Math.ceil(sales.length / pageSize));
+  const pagedSales = pageSize === Infinity ? sales : sales.slice((page - 1) * pageSize, page * pageSize);
+
   // Totals
   const totals = sales.reduce((acc, s) => ({
     gross: acc.gross + s.gross_sales,
@@ -163,8 +208,15 @@ const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: Transactions
         <div className="flex items-center gap-2">
           <input
             type="date"
-            value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+            className="h-10 px-3 rounded-lg border border-foreground/10 bg-card font-display text-sm text-foreground"
+          />
+          <span className="text-foreground/40 font-display text-sm">to</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
             className="h-10 px-3 rounded-lg border border-foreground/10 bg-card font-display text-sm text-foreground"
           />
           <button onClick={handleExportCSV} className="h-10 px-4 rounded-lg bg-primary/10 text-primary font-display font-semibold text-sm flex items-center gap-2 active:scale-95">
@@ -178,7 +230,7 @@ const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: Transactions
         {loading ? (
           <div className="flex items-center justify-center h-full text-foreground/40 font-display">Loading...</div>
         ) : sales.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-foreground/30 font-display">No transactions for {selectedDate}</div>
+          <div className="flex items-center justify-center h-full text-foreground/30 font-display">No transactions for {startDate === endDate ? startDate : `${startDate} to ${endDate}`}</div>
         ) : (
           <Table>
             <TableHeader>
@@ -199,7 +251,7 @@ const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: Transactions
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sales.map(s => (
+              {pagedSales.map(s => (
                 <TableRow key={s.id} className="cursor-pointer" onClick={() => setDetail(s)}>
                   <TableCell className="font-body text-xs">{new Date(s.created_at).toTimeString().slice(0, 5)}</TableCell>
                   <TableCell className="font-display text-xs font-semibold">{s.order_slip_number}</TableCell>
@@ -236,6 +288,49 @@ const TransactionsMasterlist = ({ onBack, branchConfig, embedded }: Transactions
               </TableRow>
             </TableBody>
           </Table>
+        )}
+        {sales.length > 0 && (
+          <div className="shrink-0 flex items-center justify-between px-2 py-3 border-t border-foreground/10 mt-2">
+            <div className="flex items-center gap-2">
+              <span className="font-body text-xs text-foreground/50">
+                {pageSize === Infinity
+                  ? `Showing all ${sales.length} transactions`
+                  : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, sales.length)} of ${sales.length} transactions`}
+              </span>
+              <select
+                value={pageSize === Infinity ? 'all' : String(pageSize)}
+                onChange={e => {
+                  setPageSize(e.target.value === 'all' ? Infinity : Number(e.target.value));
+                  setPage(1);
+                }}
+                className="h-7 px-2 rounded-lg border border-foreground/10 bg-card font-display text-xs text-foreground"
+              >
+                <option value="20">20 / page</option>
+                <option value="25">25 / page</option>
+                <option value="100">100 / page</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 1 || pageSize === Infinity}
+                className="h-8 px-3 rounded-lg bg-foreground/5 font-display text-sm font-semibold disabled:opacity-30 active:scale-95"
+              >
+                Prev
+              </button>
+              <span className="font-display text-sm font-semibold text-foreground/60">
+                {pageSize === Infinity ? '1 / 1' : `${page} / ${totalPages}`}
+              </span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page === totalPages || pageSize === Infinity}
+                className="h-8 px-3 rounded-lg bg-foreground/5 font-display text-sm font-semibold disabled:opacity-30 active:scale-95"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
