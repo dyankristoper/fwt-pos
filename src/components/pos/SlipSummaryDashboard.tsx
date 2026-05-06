@@ -11,6 +11,11 @@ interface SlipSummaryDashboardProps {
   embedded?: boolean;
 }
 
+interface SlipSale {
+  order_items: any;
+  payment_method: string;
+}
+
 interface SlipRow {
   slip_number: string;
   total: number;
@@ -19,6 +24,7 @@ interface SlipRow {
   created_at: string;
   void_reason?: string;
   void_by?: string;
+  completed_sales?: SlipSale | null;
 }
 
 const SlipSummaryDashboard = ({ branchId, onBack, onDayCloseChange, embedded }: SlipSummaryDashboardProps) => {
@@ -41,7 +47,7 @@ const SlipSummaryDashboard = ({ branchId, onBack, onDayCloseChange, embedded }: 
     const endOfDay = `${today}T23:59:59`;
 
     const [slipRes, reprintRes] = await Promise.all([
-      supabase.from('order_slips').select('slip_number, total, status, cashier_name, created_at, void_reason, void_by')
+      supabase.from('order_slips').select('slip_number, total, status, cashier_name, created_at, void_reason, void_by, completed_sales(order_items, payment_method)')
         .eq('branch_id', branchId).gte('created_at', startOfDay).lte('created_at', endOfDay)
         .order('created_at', { ascending: false }) as any,
       supabase.from('reprint_log').select('id')
@@ -58,17 +64,57 @@ const SlipSummaryDashboard = ({ branchId, onBack, onDayCloseChange, embedded }: 
   const totalActiveSales = activeSlips.reduce((sum, s) => sum + Number(s.total), 0);
 
   const handleCSVExport = useCallback(() => {
-    const headers = ['Slip Number', 'Total', 'Status', 'Cashier', 'Time', 'Void Reason', 'Voided By'];
-    const rows = slips.map(s => [
-      s.slip_number,
-      Number(s.total).toFixed(2),
-      s.status,
-      s.cashier_name || '',
-      new Date(s.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }),
-      s.void_reason || '',
-      s.void_by || '',
-    ]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    console.log(`Handle CSV Export`);
+
+    const headers = [
+      'Slip Number', 'Time', 'Cashier', 'Status', 'Payment Method',
+      'Item Name', 'SKU', 'Qty', 'Unit Price', 'Combo',
+      'Add-Ons', 'Special Instruction', 'Item Discount',
+      'Slip Total', 'Void Reason', 'Voided By',
+    ];
+
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+    const rows: string[][] = [];
+    for (const s of slips) {
+      const time = new Date(s.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+      const slipTotal = Number(s.total).toFixed(2);
+      const paymentMethod = s.completed_sales?.payment_method ?? '';
+      const orderItems: any[] = Array.isArray(s.completed_sales?.order_items) ? s.completed_sales!.order_items : [];
+
+      if (orderItems.length === 0) {
+        rows.push([s.slip_number, time, s.cashier_name || '', s.status, paymentMethod, '', '', '', '', '', '', '', '', slipTotal, s.void_reason || '', s.void_by || '']);
+        continue;
+      }
+
+      for (const item of orderItems) {
+        const addOns: string[] = (item.addOns ?? []).map((a: any) => a.name);
+        if (item.isCombo && item.comboDrink?.name) addOns.push(`${item.comboDrink.name} (combo drink)`);
+        const discount = item.discount
+          ? `${item.discount.type === 'percent' ? item.discount.value + '%' : '₱' + Number(item.discount.value).toFixed(2)} – ${item.discount.reason}`
+          : '';
+        rows.push([
+          s.slip_number,
+          time,
+          s.cashier_name || '',
+          s.status,
+          paymentMethod,
+          item.menuItem?.name ?? '',
+          item.menuItem?.sku_code ?? '',
+          String(item.quantity ?? 1),
+          Number(item.menuItem?.price ?? 0).toFixed(2),
+          item.isCombo ? 'Yes' : 'No',
+          addOns.join('; '),
+          item.specialInstruction ?? '',
+          discount,
+          slipTotal,
+          s.void_reason || '',
+          s.void_by || '',
+        ]);
+      }
+    }
+
+    const csv = [headers, ...rows].map(r => r.map(esc).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
